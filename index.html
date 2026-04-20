@@ -445,11 +445,54 @@ function renderMessage(m, appendOnly = false) {
     document.getElementById('chat-input').onkeypress = async (e) => { 
         if(e.key === 'Enter') {
             const val = e.target.value.trim();
-            if (val === '/clear') { document.getElementById('message-container').innerHTML = ''; e.target.value = ''; return; }
-            if(val || pendingAttachment) { sendMessage(val); e.target.value = ''; }
+            
+            // 1. Handle /clear command
+            if (val === '/clear') { 
+                document.getElementById('message-container').innerHTML = ''; 
+                e.target.value = ''; 
+                return; 
+            }
+
+            // 2. Handle /timeout command
+            if (val.startsWith('/timeout ')) {
+                if (!isAdmin(myUsername)) {
+                    alert("Only admins can use this command.");
+                    e.target.value = '';
+                    return;
+                }
+
+                // Split the command: ["/timeout", "username#1234", "minutes"]
+                const parts = val.split(' ');
+                if (parts.length >= 3) {
+                    const targetUser = parts[1];
+                    const minutes = parseInt(parts[2], 10);
+
+                    if (!isNaN(minutes)) {
+                        // Calculate expiration time
+                        const expiresAt = new Date(Date.now() + minutes * 60000).toISOString();
+                        
+                        // Send to the Timeouts table
+                        await db.from('Timeouts').insert([{ 
+                            target_user: targetUser, 
+                            expires_at: expiresAt
+                        }]);
+                        
+                        console.log(`Timed out ${targetUser} for ${minutes} minutes.`);
+                    }
+                }
+                
+                // Clear the input box so the command doesn't send to the chat
+                e.target.value = '';
+                return; 
+            }
+
+            // 3. Normal Message Sending
+            if(val || pendingAttachment) { 
+                sendMessage(val); 
+                e.target.value = ''; 
+            }
         } 
     };
-
     async function loadMessages() {
         const container = document.getElementById('message-container');
         container.innerHTML = ''; lastUser = null; lastTime = 0;
