@@ -103,7 +103,7 @@
         .member-avatar-wrapper img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
         
         .status-dot { position: absolute; bottom: -2px; right: -2px; width: 10px; height: 10px; background: #23a559; border-radius: 50%; border: 2px solid #2b2d31; } 
-        .status-dot.offline { background: #80848e; }
+        .status-dot.offline { background: #80848e; } /* Grey dot */
 
         /* OVERLAYS & MODALS */
         #signup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 2000; }
@@ -205,6 +205,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+    // Favicon magic
+    ((i, l) => { i.onload = () => { const c = document.createElement('canvas'), ctx = c.getContext('2d'), s = i.width; c.width = c.height = s; ctx.drawImage(i, 0, (i.height - s) / 2, s, s, 0, 0, s, s); l.rel = 'icon'; l.href = c.toDataURL(); document.head.appendChild(l); }; i.src = 'Discourse.png'; })(new Image(), document.createElement('link'));
+    
     const SUPABASE_URL = 'https://ovwvdfnilvedplhwzzjl.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_FUPgy9ZRC9hrNfMUborCdQ_WF-pD5UP';
     const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -218,6 +221,7 @@
     let lastTime = 0;
     let timeoutInterval = null;
     let livePfps = {}; 
+    let userIsTimedOut = false; // <-- ADDED THIS VARIABLE
 
     function isAdmin(username) {
         return username === 'githbprime#3951' || username === 'primealt#9047';
@@ -235,6 +239,11 @@
         onlineUsernames.forEach(userKey => {
             const userPfp = presenceState[userKey][0].pfp || getPfp(userKey);
             livePfps[userKey] = userPfp;
+
+            document.querySelectorAll(`.${getUserClass(userKey)}`).forEach(img => {
+                if (img.src !== userPfp) img.src = userPfp;
+            });
+
             const isAdm = isAdmin(userKey);
             onlineList.innerHTML += `
                 <div class="member-item" onclick="showMiniProfile(event, '${userKey}')">
@@ -249,18 +258,35 @@
 
         try {
             const { data: allUsers } = await db.from('Users').select('*');
+            const { data: msgHistory } = await db.from('Messages').select('username');
+
             const bank = new Map();
-            if (allUsers) allUsers.forEach(u => bank.set(u.username, u.avatar_url));
+            // Prioritize the Users table because it has the real avatar_urls
+            if (allUsers) {
+                allUsers.forEach(u => {
+                    if (u.username) bank.set(u.username, u.avatar_url);
+                });
+            }
+            
+            // Backfill from messages only if they aren't in the Users table
+            if (msgHistory) {
+                msgHistory.forEach(m => {
+                    if (m.username && !bank.has(m.username)) {
+                        bank.set(m.username, `https://api.dicebear.com/7.x/pixel-art/svg?seed=${m.username}`);
+                    }
+                });
+            }
 
             offlineList.innerHTML = '';
             let offlineCount = 0;
             bank.forEach((avatar, username) => {
                 if (!onlineUsernames.includes(username)) {
                     const isAdm = isAdmin(username);
+                    // Use the avatar from the bank
                     offlineList.innerHTML += `
                         <div class="member-item offline" onclick="showMiniProfile(event, '${username}')">
                             <div class="member-avatar-wrapper">
-                                <img src="${avatar}" style="filter: grayscale(100%); opacity: 0.6;">
+                                <img src="${avatar}" class="${getUserClass(username)}" style="filter: grayscale(100%); opacity: 0.6;">
                                 <div class="status-dot offline"></div>
                             </div>
                             <span style="color:${isAdm?'#a89020':'#747f8d'}">${username.split('#')[0]}${isAdm?' 👑':''}</span>
@@ -269,12 +295,14 @@
                 }
             });
             document.getElementById('offline-count').innerText = offlineCount;
-        } catch (e) { console.warn("Offline fetch pending..."); }
+        } catch (e) {
+            console.warn("Offline list sync pending...");
+        }
     }
 
+    // --- UI & UTILS ---
     function openLightbox(src) { document.getElementById('lightbox-img').src = src; document.getElementById('lightbox').style.display = 'flex'; }
     function closeMiniProfile() { document.getElementById('mp-overlay').style.display = 'none'; document.getElementById('mp-card').style.display = 'none'; }
-    
     function showMiniProfile(event, username) {
         const card = document.getElementById('mp-card');
         const overlay = document.getElementById('mp-overlay');
@@ -292,13 +320,16 @@
     async function checkTimeouts() {
         const { data } = await db.from('Timeouts').select('expires_at').eq('target_user', myUsername).order('expires_at', { ascending: false }).limit(1);
         if (data && data.length > 0) {
-            const exp = new Date(data[0].expires_at).getTime();
-            if (exp > Date.now()) { applyTimeoutUI(exp); return; }
+            const expiresAt = new Date(data[0].expires_at).getTime();
+            if (expiresAt > Date.now()) { applyTimeoutUI(expiresAt); return; }
         }
         clearTimeoutUI();
     }
     
     function applyTimeoutUI(expiresAt) {
+        userIsTimedOut = true; // <-- ADDED THIS
+        document.getElementById('signup-overlay').style.display = 'none'; // <-- ADDED THIS (Closes modal if open)
+
         const input = document.getElementById('chat-input'), box = document.getElementById('input-box-wrapper');
         box.classList.add('is-timeouted'); input.disabled = true;
         clearInterval(timeoutInterval);
@@ -314,6 +345,7 @@
     }
 
     function clearTimeoutUI() {
+        userIsTimedOut = false; // <-- ADDED THIS
         clearInterval(timeoutInterval);
         document.getElementById('input-box-wrapper').classList.remove('is-timeouted');
         const input = document.getElementById('chat-input');
@@ -358,10 +390,19 @@
         const file = input.files[0]; if (!file) return;
         const reader = new FileReader();
         reader.onload = e => {
-            pendingAttachment = e.target.result;
-            document.getElementById('attach-preview-img').src = pendingAttachment;
-            document.getElementById('attach-bar').style.display = 'flex';
-            document.getElementById('chat-input').focus();
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let w = img.width, h = img.height, MAX = 1920; 
+                if (w > MAX || h > MAX) { const r = Math.min(MAX/w, MAX/h); w *= r; h *= r; }
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                pendingAttachment = canvas.toDataURL('image/jpeg', 0.6);
+                document.getElementById('attach-preview-img').src = pendingAttachment;
+                document.getElementById('attach-bar').style.display = 'flex';
+                document.getElementById('chat-input').focus();
+            };
+            img.src = e.target.result;
         };
         reader.readAsDataURL(file);
     }
@@ -370,12 +411,13 @@
         const container = document.getElementById('message-container');
         const isFirst = (m.username !== lastUser || (new Date(m.created_at) - lastTime) > 300000);
         const isAdm = isAdmin(m.username);
+        const uClass = getUserClass(m.username);
         let content = m.content || "";
         let replyHtml = '';
         if (content.startsWith('{"_reply"')) {
             try {
                 const p = JSON.parse(content); content = p.content;
-                replyHtml = `<div class="reply-line"><img class="rt-pfp" src="${p._reply.pfp}"><strong>${p._reply.name}</strong>: ${p._reply.text}</div>`;
+                replyHtml = `<div class="reply-line"><img class="rt-pfp ${getUserClass(p._reply.name)}" src="${p._reply.pfp}"><strong>${p._reply.name}</strong>: ${p._reply.text}</div>`;
             } catch(e){}
         }
         let imgSrc = null;
@@ -385,13 +427,13 @@
         let reactHtml = '<div class="react-bar">';
         if (m.reactions) {
             for (let [emoji, users] of Object.entries(m.reactions)) {
-                let tooltips = users.map(u => `<div class="rt-user"><img class="rt-pfp" src="${getPfp(u)}"> ${u.split('#')[0]}</div>`).join('');
+                let tooltips = users.map(u => `<div class="rt-user"><img class="rt-pfp ${getUserClass(u)}" src="${getPfp(u)}"> ${u.split('#')[0]}</div>`).join('');
                 reactHtml += `<div class="react-pill ${users.includes(myUsername)?'active':''}" onclick="addReaction('${m.id}', '${emoji}')">${emoji} ${users.length}<div class="react-tooltip">${tooltips}</div></div>`;
             }
         }
         reactHtml += '</div>';
         
-        row.innerHTML = `${replyHtml}<div class="msg-flex"><div class="avatar-col">${(isFirst || replyHtml) ? `<img src="${getPfp(m.username)}" class="msg-pfp" onclick="showMiniProfile(event, '${m.username}')">` : ''}</div><div class="content-col">${(isFirst || replyHtml) ? `<div class="msg-header"><span class="username" style="color:${isAdm?'#ffcc00':''}" onclick="showMiniProfile(event, '${m.username}')">${m.username.split('#')[0]}${isAdm?' 👑':''}</span><span class="timestamp">${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div>` : ''}<div class="msg-text">${content}</div>${imgSrc ? `<img src="${imgSrc}" class="chat-img" onclick="openLightbox(this.src)">` : ''}${reactHtml === '<div class="react-bar"></div>' ? '' : reactHtml}</div></div><div class="msg-actions"><div class="action-btn">😀<div class="emoji-picker"><span onclick="addReaction('${m.id}', '👍')">👍</span><span onclick="addReaction('${m.id}', '❤️')">❤️</span><span onclick="addReaction('${m.id}', '💀')">💀</span></div></div><div class="action-btn" onclick="setReply('${m.id}', '${m.username.split('#')[0]}', '${content.replace(/'/g,"\\'")}')">↩️</div></div>`;
+        row.innerHTML = `${replyHtml}<div class="msg-flex"><div class="avatar-col">${(isFirst || replyHtml) ? `<img src="${getPfp(m.username)}" class="msg-pfp ${uClass}" onclick="showMiniProfile(event, '${m.username}')">` : ''}</div><div class="content-col">${(isFirst || replyHtml) ? `<div class="msg-header"><span class="username" style="color:${isAdm?'#ffcc00':''}" onclick="showMiniProfile(event, '${m.username}')">${m.username.split('#')[0]}${isAdm?' 👑':''}</span><span class="timestamp">${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div>` : ''}<div class="msg-text">${content}</div>${imgSrc ? `<img src="${imgSrc}" class="chat-img" onclick="openLightbox(this.src)">` : ''}${reactHtml === '<div class="react-bar"></div>' ? '' : reactHtml}</div></div><div class="msg-actions"><div class="action-btn">😀<div class="emoji-picker"><span onclick="addReaction('${m.id}', '👍')">👍</span><span onclick="addReaction('${m.id}', '❤️')">❤️</span><span onclick="addReaction('${m.id}', '💀')">💀</span></div></div><div class="action-btn" onclick="setReply('${m.id}', '${m.username.split('#')[0]}', '${content.replace(/'/g,"\\'")}')">↩️</div></div>`;
         
         container.appendChild(row);
         if (appendOnly) container.scrollTop = container.scrollHeight;
@@ -399,9 +441,21 @@
     }
 
     async function sendMessage(val) {
-        await checkTimeouts(); // Final block check
-        const box = document.getElementById('input-box-wrapper');
-        if (box.classList.contains('is-timeouted')) return;
+        // The Final Timeout Check before sending
+        const { data: timeoutData } = await db.from('Timeouts')
+            .select('expires_at')
+            .eq('target_user', myUsername)
+            .order('expires_at', { ascending: false })
+            .limit(1);
+
+        if (timeoutData && timeoutData.length > 0) {
+            const expiresAt = new Date(timeoutData[0].expires_at).getTime();
+            if (expiresAt > Date.now()) {
+                applyTimeoutUI(expiresAt); // Lock them out if they aren't already
+                console.warn("Message blocked: You are currently timed out.");
+                return; // Stop the message from sending
+            }
+        }
 
         let finalVal = val;
         if (pendingAttachment) finalVal += "[IMG]" + pendingAttachment;
@@ -419,17 +473,53 @@
     document.getElementById('chat-input').onkeypress = async (e) => { 
         if(e.key === 'Enter') {
             const val = e.target.value.trim();
-            if (val === '/clear') { document.getElementById('message-container').innerHTML = ''; e.target.value = ''; return; }
-            if (val.startsWith('/timeout ')) {
-                if (!isAdmin(myUsername)) { alert("Admins only."); e.target.value = ''; return; }
-                const pts = val.split(' ');
-                if (pts.length >= 3) {
-                    const expiresAt = new Date(Date.now() + parseInt(pts[2]) * 60000).toISOString();
-                    await db.from('Timeouts').insert([{ target_user: pts[1], expires_at: expiresAt, issued_by: myUsername }]);
-                }
-                e.target.value = ''; return; 
+            
+            // 1. Handle /clear command
+            if (val === '/clear') { 
+                document.getElementById('message-container').innerHTML = ''; 
+                e.target.value = ''; 
+                return; 
             }
-            if(val || pendingAttachment) { sendMessage(val); e.target.value = ''; }
+
+            // 2. Handle /timeout command
+            if (val.startsWith('/timeout ')) {
+                if (!isAdmin(myUsername)) {
+                    alert("Only admins can use this command.");
+                    e.target.value = '';
+                    return;
+                }
+
+                // Split the command: ["/timeout", "username#1234", "minutes"]
+                const parts = val.split(' ');
+                if (parts.length >= 3) {
+                    const targetUser = parts[1];
+                    const minutes = parseInt(parts[2], 10);
+
+                    if (!isNaN(minutes)) {
+                        // Calculate expiration time
+                        const expiresAt = new Date(Date.now() + minutes * 60000).toISOString();
+                        
+                        // Send to the Timeouts table WITH issued_by
+                        await db.from('Timeouts').insert([{ 
+                            target_user: targetUser, 
+                            expires_at: expiresAt,
+                            issued_by: myUsername
+                        }]);
+                        
+                        console.log(`Timed out ${targetUser} for ${minutes} minutes.`);
+                    }
+                }
+                
+                // Clear the input box so the command doesn't send to the chat
+                e.target.value = '';
+                return; 
+            }
+
+            // 3. Normal Message Sending
+            if(val || pendingAttachment) { 
+                sendMessage(val); 
+                e.target.value = ''; 
+            }
         } 
     };
 
@@ -441,6 +531,11 @@
     }
 
     function openModal(isEdit = false) {
+        if (isEdit && userIsTimedOut) { // <-- ADDED THIS CHECK
+            alert("You cannot edit your profile while timed out!");
+            return;
+        }
+
         document.getElementById('signup-overlay').style.display = 'flex';
         if (isEdit && myUsername) {
             document.getElementById('modal-username').value = myUsername.split('#')[0];
@@ -450,6 +545,11 @@
     }
 
     async function saveProfile() {
+        if (userIsTimedOut) { // <-- ADDED THIS CHECK
+            alert("Action blocked: You are currently timed out.");
+            return;
+        }
+
         const u = document.getElementById('modal-username').value.trim();
         if(!u) return;
         myUsername = u + "#" + (myUsername ? myUsername.split('#')[1] : Math.floor(1000+Math.random()*9000));
@@ -462,37 +562,51 @@
 
     async function initApp() {
         if (!myUsername) { openModal(false); return; }
+
+        // Load Basic Profile UI
         const isMeAdmin = isAdmin(myUsername);
         document.getElementById('my-name').innerHTML = `<span style="color:${isMeAdmin?'#ffcc00':'white'}">${myUsername.split('#')[0]}${isMeAdmin?' 👑':''}</span>`;
         document.getElementById('my-hash').innerText = '#' + (myUsername.split('#')[1] || '0000');
-        document.getElementById('my-pfp').src = myAvatar;
-
-        const pres = db.channel('online_users', { config: { presence: { key: myUsername } } });
-        pres.on('presence', { event: 'sync' }, () => refreshMemberLists(pres.presenceState())).subscribe(async (s) => {
-            if (s === 'SUBSCRIBED') await pres.track({ pfp: myAvatar });
+        
+        const myPfpImg = document.getElementById('my-pfp');
+        myPfpImg.src = myAvatar;
+        myPfpImg.className = getUserClass(myUsername); // This makes sure the update loop finds it
+        
+        await db.from('Users').upsert({ username: myUsername, avatar_url: myAvatar });
+        
+        // Presence Setup
+        const presence = db.channel('online_users', { config: { presence: { key: myUsername } } });
+        presence.on('presence', { event: 'sync' }, () => {
+            refreshMemberLists(presence.presenceState());
+        }).subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') await presence.track({ pfp: myAvatar });
         });
 
+        // Realtime Listeners
         db.channel('msgs').on('postgres_changes', { event: '*', schema: 'public', table: 'Messages' }, () => loadMessages()).subscribe();
         
-        db.channel('realtime_timeouts').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Timeouts' }, (payload) => {
-            if (payload.new.target_user === myUsername) {
-                const exp = new Date(payload.new.expires_at).getTime();
-                if (exp > Date.now()) applyTimeoutUI(exp);
+        // Realtime Timeout Listener
+        db.channel('timeouts').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Timeouts', filter: `target_user=eq.${myUsername}` }, (payload) => {
+            const expiresAt = new Date(payload.new.expires_at).getTime();
+            if (expiresAt > Date.now()) {
+                applyTimeoutUI(expiresAt);
             }
         }).subscribe();
-
-        document.querySelectorAll('.channel-item').forEach(el => {
-            el.onclick = () => {
-                document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
-                el.classList.add('active');
-                currentChannel = el.dataset.channel;
-                loadMessages();
-            }
-        });
 
         loadMessages();
         checkTimeouts();
     }
+
+    // Channel Switching
+    document.querySelectorAll('.channel-item').forEach(el => {
+        el.onclick = () => {
+            document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            currentChannel = el.dataset.channel;
+            document.getElementById('chat-input').placeholder = `Message #${currentChannel}`;
+            loadMessages();
+        }
+    });
 
     initApp();
 </script>
