@@ -212,7 +212,6 @@
     const SUPABASE_URL = 'https://ovwvdfnilvedplhwzzjl.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_FUPgy9ZRC9hrNfMUborCdQ_WF-pD5UP';
     const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const ADMIN_USER = 'githbprime#3951';
 
     let currentChannel = 'welcome';
     let myUsername = localStorage.getItem('discordGuestName');
@@ -224,7 +223,9 @@
     let timeoutInterval = null;
     let livePfps = {}; 
 
-    function isAdmin(user) { return user && user.toLowerCase() === ADMIN_USER.toLowerCase(); }
+    function isAdmin(username) {
+    return username === 'githbprime#3951' || username === 'primealt#9047';
+    }
     function getPfp(user) { return livePfps[user] || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${user}`; }
     function getUserClass(user) { return `avatar-${user.replace('#', '-')}`; }
 
@@ -324,6 +325,12 @@ async function refreshMemberLists(presenceState) {
         clearTimeoutUI();
     }
     function applyTimeoutUI(expiresAt) {
+        // Inside your /timeout command block:
+        await db.from('Timeouts').insert([{ 
+        target_user: targetUser, 
+        expires_at: expiresAt,
+        issued_by: myUsername // <-- We add this so the database can verify you
+        }]);
         const input = document.getElementById('chat-input'), box = document.getElementById('input-box-wrapper');
         box.classList.add('is-timeouted'); input.disabled = true;
         clearInterval(timeoutInterval);
