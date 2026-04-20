@@ -221,7 +221,6 @@
     let lastTime = 0;
     let timeoutInterval = null;
     let livePfps = {}; 
-    let userIsTimedOut = false; // <-- ADDED THIS VARIABLE
 
     function isAdmin(username) {
         return username === 'githbprime#3951' || username === 'primealt#9047';
@@ -327,9 +326,6 @@
     }
     
     function applyTimeoutUI(expiresAt) {
-        userIsTimedOut = true; // <-- ADDED THIS
-        document.getElementById('signup-overlay').style.display = 'none'; // <-- ADDED THIS (Closes modal if open)
-
         const input = document.getElementById('chat-input'), box = document.getElementById('input-box-wrapper');
         box.classList.add('is-timeouted'); input.disabled = true;
         clearInterval(timeoutInterval);
@@ -345,7 +341,6 @@
     }
 
     function clearTimeoutUI() {
-        userIsTimedOut = false; // <-- ADDED THIS
         clearInterval(timeoutInterval);
         document.getElementById('input-box-wrapper').classList.remove('is-timeouted');
         const input = document.getElementById('chat-input');
@@ -531,11 +526,6 @@
     }
 
     function openModal(isEdit = false) {
-        if (isEdit && userIsTimedOut) { // <-- ADDED THIS CHECK
-            alert("You cannot edit your profile while timed out!");
-            return;
-        }
-
         document.getElementById('signup-overlay').style.display = 'flex';
         if (isEdit && myUsername) {
             document.getElementById('modal-username').value = myUsername.split('#')[0];
@@ -545,11 +535,6 @@
     }
 
     async function saveProfile() {
-        if (userIsTimedOut) { // <-- ADDED THIS CHECK
-            alert("Action blocked: You are currently timed out.");
-            return;
-        }
-
         const u = document.getElementById('modal-username').value.trim();
         if(!u) return;
         myUsername = u + "#" + (myUsername ? myUsername.split('#')[1] : Math.floor(1000+Math.random()*9000));
