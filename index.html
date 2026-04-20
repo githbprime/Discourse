@@ -544,6 +544,14 @@ function renderMessage(m, appendOnly = false) {
 
         // Realtime Listeners
         db.channel('msgs').on('postgres_changes', { event: '*', schema: 'public', table: 'Messages' }, () => loadMessages()).subscribe();
+       
+        // ADD THIS: Real-time Timeout Listener
+        db.channel('timeouts').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Timeouts', filter: `target_user=eq.${myUsername}` }, (payload) => {
+            const expiresAt = new Date(payload.new.expires_at).getTime();
+            if (expiresAt > Date.now()) {
+                applyTimeoutUI(expiresAt);
+            }
+        }).subscribe();
         
         // Channel Switching
         document.querySelectorAll('.channel-item').forEach(el => {
