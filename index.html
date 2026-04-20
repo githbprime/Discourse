@@ -205,7 +205,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-    
     // Favicon magic
     ((i, l) => { i.onload = () => { const c = document.createElement('canvas'), ctx = c.getContext('2d'), s = i.width; c.width = c.height = s; ctx.drawImage(i, 0, (i.height - s) / 2, s, s, 0, 0, s, s); l.rel = 'icon'; l.href = c.toDataURL(); document.head.appendChild(l); }; i.src = 'Discourse.png'; })(new Image(), document.createElement('link'));
     
@@ -224,12 +223,13 @@
     let livePfps = {}; 
 
     function isAdmin(username) {
-    return username === 'githbprime#3951' || username === 'primealt#9047';
+        return username === 'githbprime#3951' || username === 'primealt#9047';
     }
+    
     function getPfp(user) { return livePfps[user] || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${user}`; }
     function getUserClass(user) { return `avatar-${user.replace('#', '-')}`; }
 
-async function refreshMemberLists(presenceState) {
+    async function refreshMemberLists(presenceState) {
         const onlineUsernames = Object.keys(presenceState);
         const onlineList = document.getElementById('member-list-online');
         const offlineList = document.getElementById('member-list-offline');
@@ -324,22 +324,22 @@ async function refreshMemberLists(presenceState) {
         }
         clearTimeoutUI();
     }
+    
     function applyTimeoutUI(expiresAt) {
-        // Inside your /timeout command block:
-        await db.from('Timeouts').insert([{ 
-        target_user: targetUser, 
-        expires_at: expiresAt,
-        issued_by: myUsername // <-- We add this so the database can verify you
-        }]);
         const input = document.getElementById('chat-input'), box = document.getElementById('input-box-wrapper');
         box.classList.add('is-timeouted'); input.disabled = true;
         clearInterval(timeoutInterval);
         timeoutInterval = setInterval(() => {
             const diff = expiresAt - Date.now();
             if (diff <= 0) clearTimeoutUI();
-            else input.placeholder = `You've been timeouted. ${Math.ceil(diff / 60000)} min left.`;
+            else {
+                const mins = Math.floor(diff / 60000);
+                const secs = Math.floor((diff % 60000) / 1000);
+                input.placeholder = `Timed out. ${mins}:${secs.toString().padStart(2, '0')} left.`;
+            }
         }, 1000);
     }
+
     function clearTimeoutUI() {
         clearInterval(timeoutInterval);
         document.getElementById('input-box-wrapper').classList.remove('is-timeouted');
@@ -402,7 +402,7 @@ async function refreshMemberLists(presenceState) {
         reader.readAsDataURL(file);
     }
 
-function renderMessage(m, appendOnly = false) {
+    function renderMessage(m, appendOnly = false) {
         const container = document.getElementById('message-container');
         const isFirst = (m.username !== lastUser || (new Date(m.created_at) - lastTime) > 300000);
         const isAdm = isAdmin(m.username);
@@ -428,7 +428,6 @@ function renderMessage(m, appendOnly = false) {
         }
         reactHtml += '</div>';
         
-        // --- FIXED INNERHTML LINE ---
         row.innerHTML = `${replyHtml}<div class="msg-flex"><div class="avatar-col">${(isFirst || replyHtml) ? `<img src="${getPfp(m.username)}" class="msg-pfp ${uClass}" onclick="showMiniProfile(event, '${m.username}')">` : ''}</div><div class="content-col">${(isFirst || replyHtml) ? `<div class="msg-header"><span class="username" style="color:${isAdm?'#ffcc00':''}" onclick="showMiniProfile(event, '${m.username}')">${m.username.split('#')[0]}${isAdm?' 👑':''}</span><span class="timestamp">${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div>` : ''}<div class="msg-text">${content}</div>${imgSrc ? `<img src="${imgSrc}" class="chat-img" onclick="openLightbox(this.src)">` : ''}${reactHtml === '<div class="react-bar"></div>' ? '' : reactHtml}</div></div><div class="msg-actions"><div class="action-btn">😀<div class="emoji-picker"><span onclick="addReaction('${m.id}', '👍')">👍</span><span onclick="addReaction('${m.id}', '❤️')">❤️</span><span onclick="addReaction('${m.id}', '💀')">💀</span></div></div><div class="action-btn" onclick="setReply('${m.id}', '${m.username.split('#')[0]}', '${content.replace(/'/g,"\\'")}')">↩️</div></div>`;
         
         container.appendChild(row);
@@ -437,9 +436,26 @@ function renderMessage(m, appendOnly = false) {
     }
 
     async function sendMessage(val) {
+        // The Final Timeout Check before sending
+        const { data: timeoutData } = await db.from('Timeouts')
+            .select('expires_at')
+            .eq('target_user', myUsername)
+            .order('expires_at', { ascending: false })
+            .limit(1);
+
+        if (timeoutData && timeoutData.length > 0) {
+            const expiresAt = new Date(timeoutData[0].expires_at).getTime();
+            if (expiresAt > Date.now()) {
+                applyTimeoutUI(expiresAt); // Lock them out if they aren't already
+                console.warn("Message blocked: You are currently timed out.");
+                return; // Stop the message from sending
+            }
+        }
+
         let finalVal = val;
         if (pendingAttachment) finalVal += "[IMG]" + pendingAttachment;
         if (pendingReply) finalVal = JSON.stringify({ _reply: pendingReply, content: finalVal });
+        
         if (currentChannel === 'welcome') {
             const pass = isAdmin(myUsername) ? null : prompt("Admin Passcode:");
             await db.rpc('post_admin_message', { passcode: pass, p_username: myUsername, p_content: finalVal, p_channel: 'welcome' });
@@ -478,10 +494,11 @@ function renderMessage(m, appendOnly = false) {
                         // Calculate expiration time
                         const expiresAt = new Date(Date.now() + minutes * 60000).toISOString();
                         
-                        // Send to the Timeouts table
+                        // Send to the Timeouts table WITH issued_by
                         await db.from('Timeouts').insert([{ 
                             target_user: targetUser, 
-                            expires_at: expiresAt
+                            expires_at: expiresAt,
+                            issued_by: myUsername
                         }]);
                         
                         console.log(`Timed out ${targetUser} for ${minutes} minutes.`);
@@ -500,6 +517,7 @@ function renderMessage(m, appendOnly = false) {
             }
         } 
     };
+
     async function loadMessages() {
         const container = document.getElementById('message-container');
         container.innerHTML = ''; lastUser = null; lastTime = 0;
@@ -551,54 +569,29 @@ function renderMessage(m, appendOnly = false) {
 
         // Realtime Listeners
         db.channel('msgs').on('postgres_changes', { event: '*', schema: 'public', table: 'Messages' }, () => loadMessages()).subscribe();
-       
-        // ADD THIS: Real-time Timeout Listener
+        
+        // Realtime Timeout Listener
         db.channel('timeouts').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Timeouts', filter: `target_user=eq.${myUsername}` }, (payload) => {
             const expiresAt = new Date(payload.new.expires_at).getTime();
             if (expiresAt > Date.now()) {
                 applyTimeoutUI(expiresAt);
             }
         }).subscribe();
-        
-        // Channel Switching
-        document.querySelectorAll('.channel-item').forEach(el => {
-            el.onclick = () => {
-                document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
-                el.classList.add('active'); currentChannel = el.dataset.channel;
-                document.getElementById('chat-input').placeholder = `Message #${currentChannel}`;
-                loadMessages();
-            };
-        });
 
         loadMessages();
         checkTimeouts();
     }
 
-    function applyTimeoutUI(expiresAt) {
-    const input = document.getElementById('chat-input');
-    
-    // Lock the input
-    input.disabled = true;
-    
-    // Update the placeholder every second to show a countdown
-    const countdown = setInterval(() => {
-        const now = Date.now();
-        const timeLeft = Math.ceil((expiresAt - now) / 1000); // Time left in seconds
-
-        if (timeLeft <= 0) {
-            // Time is up! Unlock them.
-            clearInterval(countdown);
-            input.disabled = false;
-            input.placeholder = "Message #" + currentChannel;
-            input.focus();
-        } else {
-            // Show mm:ss formatting
-            const mins = Math.floor(timeLeft / 60);
-            const secs = timeLeft % 60;
-            input.placeholder = `You are timed out for ${mins}:${secs.toString().padStart(2, '0')}`;
+    // Channel Switching
+    document.querySelectorAll('.channel-item').forEach(el => {
+        el.onclick = () => {
+            document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            currentChannel = el.dataset.channel;
+            document.getElementById('chat-input').placeholder = `Message #${currentChannel}`;
+            loadMessages();
         }
-    }, 1000);
-}
+    });
 
     initApp();
 </script>
