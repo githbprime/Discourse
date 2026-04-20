@@ -567,6 +567,32 @@ function renderMessage(m, appendOnly = false) {
         checkTimeouts();
     }
 
+    function applyTimeoutUI(expiresAt) {
+    const input = document.getElementById('chat-input');
+    
+    // Lock the input
+    input.disabled = true;
+    
+    // Update the placeholder every second to show a countdown
+    const countdown = setInterval(() => {
+        const now = Date.now();
+        const timeLeft = Math.ceil((expiresAt - now) / 1000); // Time left in seconds
+
+        if (timeLeft <= 0) {
+            // Time is up! Unlock them.
+            clearInterval(countdown);
+            input.disabled = false;
+            input.placeholder = "Message #" + currentChannel;
+            input.focus();
+        } else {
+            // Show mm:ss formatting
+            const mins = Math.floor(timeLeft / 60);
+            const secs = timeLeft % 60;
+            input.placeholder = `You are timed out for ${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+    }, 1000);
+}
+
     initApp();
 </script>
 </body>
