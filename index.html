@@ -434,7 +434,7 @@
         ${(isFirst || replyHtml) ? `<img src="${getPfp(m.username)}" class="msg-pfp ${uClass}" onclick="showMiniProfile(event, '${m.username}')">` : ''}
     </div>
     <div class="content-col">
-        ${(isFirst || replyHtml) ? `<div class="msg-header"><span class="username" style="color:${isAdm ? '#ffcc00' : ''}" onclick="showMiniProfile(event, '${m.username}')">${m.username.split('#')[0]}${isAdm ? ' 👑' : ''}</span><span class="timestamp">${new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>` : ''}
+        ${(isFirst || replyHtml) ? `<div class="msg-header"><span class="username" style="color:${isAdm ? '#ffcc00' : ''}" onclick="showMiniProfile(event, '${m.username}')">${m.username.split('#')[0]}${isAdm ? ' 👑' : ''}</span><span class="timestamp">${new Date(m.created_at).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>` : ''}
         <div class="msg-text">${content}</div>
         ${imgSrc ? `<img src="${imgSrc}" class="chat-img" onclick="openLightbox(this.src)">` : ''}
         ${reactHtml === '<div class="react-bar"></div>' ? '' : reactHtml}
