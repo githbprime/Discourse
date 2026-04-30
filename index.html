@@ -4,48 +4,69 @@
     <meta charset="UTF-8">
     <title>Discourse | Prime Server</title>
     <style>
+        /* ==== DYNAMIC THEME CSS VARIABLES ==== */
+        /* Default Discord Colors - FIXED LIGHT MODE */
+        body.mode-dark { 
+            --bg-primary: #313338; --bg-secondary: #2b2d31; --bg-tertiary: #1e1f22; 
+            --text-normal: #dbdee1; --text-muted: #b5bac1; --card-bg: #1e1f22; 
+            --inner-bg: #2b2d31; --brand: #5865f2; --input-bg: #383a40;
+        }
+        body.mode-light { 
+            --bg-primary: #ffffff; --bg-secondary: #f2f3f5; --bg-tertiary: #e3e5e8; 
+            --text-normal: #060607; --text-muted: #4e5058; --card-bg: #ffffff; 
+            --inner-bg: #f2f3f5; --brand: #5865f2; --input-bg: #ebedef;
+        }
+        
+        /* Custom Themes (Nitro Only) */
+        body.theme-beige.mode-dark { --bg-primary: #5c554b; --bg-secondary: #4a443c; --bg-tertiary: #38332d; --text-normal: #eee; --text-muted: #ccc; --card-bg: #4a443c; --inner-bg: #38332d; --brand: #8b7355; --input-bg: #2a251f; }
+        body.theme-beige.mode-light { --bg-primary: #f5f5dc; --bg-secondary: #e8e8ce; --bg-tertiary: #dbdbc0; --text-normal: #333; --text-muted: #555; --card-bg: #fff; --inner-bg: #e8e8ce; --brand: #8b7355; --input-bg: #d1d1b4; }
+        
+        body.theme-nature.mode-dark { --bg-primary: #1b3320; --bg-secondary: #142918; --bg-tertiary: #0e1c10; --text-normal: #e8f5e9; --text-muted: #a5d6a7; --card-bg: #142918; --inner-bg: #0e1c10; --brand: #2e7d32; --input-bg: #09140b; }
+        body.theme-nature.mode-light { --bg-primary: #e8f5e9; --bg-secondary: #c8e6c9; --bg-tertiary: #a5d6a7; --text-normal: #1b5e20; --text-muted: #2e7d32; --card-bg: #fff; --inner-bg: #c8e6c9; --brand: #2e7d32; --input-bg: #a3c9a5; }
+        
+        body.theme-lava.mode-dark { --bg-primary: #3b1c1c; --bg-secondary: #2b1414; --bg-tertiary: #1f0f0f; --text-normal: #ffcdd2; --text-muted: #ef9a9a; --card-bg: #2b1414; --inner-bg: #1f0f0f; --brand: #c62828; --input-bg: #120808; }
+        body.theme-lava.mode-light { --bg-primary: #ffebee; --bg-secondary: #ffcdd2; --bg-tertiary: #ef9a9a; --text-normal: #b71c1c; --text-muted: #c62828; --card-bg: #fff; --inner-bg: #ffcdd2; --brand: #c62828; --input-bg: #e8b6bc; }
+
         /* SETTINGS MODAL STYLES */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0,0,0,0.8); z-index: 9999;
-            display: none; /* Controlled by JS */
-            justify-content: center; align-items: center;
+            display: none; justify-content: center; align-items: center;
         }
         .settings-container {
             width: 100vw; height: 100vh;
-            background: var(--bg-primary, #313338); display: flex; overflow: hidden;
+            background: var(--bg-primary); display: flex; overflow: hidden;
         }
         .settings-sidebar {
-            width: 280px; background: var(--bg-secondary, #2b2d31); padding: 60px 20px 20px;
+            width: 280px; background: var(--bg-secondary); padding: 60px 20px 20px;
             display: flex; flex-direction: column; gap: 2px; align-items: flex-end;
         }
         .sidebar-inner { width: 190px; display: flex; flex-direction: column; height: 100%; }
-        .sidebar-header { color: var(--text-muted, #80848e); font-size: 12px; margin-bottom: 8px; font-weight: bold; text-transform: uppercase; padding-left: 10px; }
+        .sidebar-header { color: var(--text-muted); font-size: 12px; margin-bottom: 8px; font-weight: bold; text-transform: uppercase; padding-left: 10px; }
         .settings-tab {
-            padding: 10px 12px; border-radius: 4px; color: var(--text-muted, #b5bac1); cursor: pointer;
+            padding: 10px 12px; border-radius: 4px; color: var(--text-muted); cursor: pointer;
             font-weight: 500; transition: 0.2s;
         }
-        .settings-tab:hover { background: var(--bg-primary, #35373c); color: var(--text-normal, #dbdee1); }
-        .settings-tab.active { background: var(--bg-tertiary, #404249); color: var(--text-normal, #fff); }
+        .settings-tab:hover { background: var(--bg-tertiary); color: var(--text-normal); }
+        .settings-tab.active { background: var(--bg-tertiary); color: var(--text-normal); }
 
-        /* The Bottom Left Back Button */
         .settings-back-btn {
-            padding: 10px 12px; border-radius: 4px; color: var(--text-muted, #b5bac1); cursor: pointer;
+            padding: 10px 12px; border-radius: 4px; color: var(--text-muted); cursor: pointer;
             font-weight: bold; transition: 0.2s; margin-top: auto; margin-bottom: 40px;
             display: flex; align-items: center; gap: 8px;
         }
-        .settings-back-btn:hover { background: var(--bg-primary, #35373c); color: var(--text-normal, #dbdee1); }
+        .settings-back-btn:hover { background: var(--bg-tertiary); color: var(--text-normal); }
 
-        .settings-content { flex-grow: 1; padding: 60px 40px; background: var(--bg-primary, #313338); overflow-y: auto; }
-        .settings-content h2 { color: var(--text-normal, #fff); margin-top: 0; margin-bottom: 20px; font-size: 24px; }
+        .settings-content { flex-grow: 1; padding: 60px 40px; background: var(--bg-primary); overflow-y: auto; }
+        .settings-content h2 { color: var(--text-normal); margin-top: 0; margin-bottom: 20px; font-size: 24px; }
 
         /* PROFILE CARD */
-        .profile-edit-card { background: var(--card-bg, #1e1f22); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; max-width: 660px; margin-bottom: 20px; }
-        .profile-banner-preview { height: 100px; background: var(--brand, #5865f2); }
+        .profile-edit-card { background: var(--bg-tertiary); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; max-width: 660px; margin-bottom: 20px; }
+        .profile-banner-preview { height: 100px; background: var(--brand); }
         .profile-header-row { padding: 0 16px; display: flex; align-items: flex-end; margin-top: -45px; margin-bottom: 16px; }
         .editable-avatar {
-            width: 80px; height: 80px; border-radius: 50%; border: 6px solid var(--card-bg, #1e1f22); 
-            background: var(--bg-tertiary, #111214); cursor: pointer; position: relative; overflow: hidden;
+            width: 80px; height: 80px; border-radius: 50%; border: 6px solid var(--bg-tertiary); 
+            background: var(--bg-secondary); cursor: pointer; position: relative; overflow: hidden;
         }
         .editable-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .avatar-overlay {
@@ -54,146 +75,78 @@
             opacity: 0; transition: 0.2s;
         }
         .editable-avatar:hover .avatar-overlay { opacity: 1; }
-        .profile-body-inner { background: var(--inner-bg, #2b2d31); margin: 0 16px 16px; padding: 16px; border-radius: 8px; display: flex; flex-direction: column; gap: 15px; }
+        .profile-body-inner { background: var(--bg-secondary); margin: 0 16px 16px; padding: 16px; border-radius: 8px; display: flex; flex-direction: column; gap: 15px; }
 
-        .input-group label { display: block; color: var(--text-muted, #b5bac1); font-size: 12px; font-weight: bold; margin-bottom: 8px;}
-        .settings-input { width: 100%; padding: 10px; border-radius: 4px; border: none; background: var(--card-bg, #1e1f22); color: var(--text-normal, #fff); font-size: 16px; border: 1px solid var(--bg-tertiary, #111214); box-sizing: border-box;}
-        .settings-input:focus { outline: 1px solid var(--brand, #5865f2); }
+        .input-group label { display: block; color: var(--text-muted); font-size: 12px; font-weight: bold; margin-bottom: 8px;}
+        .settings-input { width: 100%; padding: 10px; border-radius: 4px; border: none; background: var(--input-bg); color: var(--text-normal); font-size: 16px; border: 1px solid var(--bg-tertiary); box-sizing: border-box;}
 
-        /* Specific Button Widths */
         .account-actions { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; max-width: 660px; }
-        .settings-btn { padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s;}
-        .brand-btn { background: var(--brand, #5865f2); }
-        .brand-btn:hover { filter: brightness(1.2); }
-        .default-btn { background: #4e5058; }
-        .default-btn:hover { background: #6d6f78; }
-        .danger-btn { background: transparent; border: 1px solid #f23f43; color: #f23f43; }
-        .danger-btn:hover { background: #f23f43; color: white; }
+        .settings-btn { padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; text-align: center; }
+        .brand-btn { background: var(--brand); }
+        .danger-btn { background: #f23f43; }
+        .danger-btn:hover { background: #d83c3e; }
         .full-width { width: 100%; }
 
-        /* Theme Styles */
+        /* Theme List */
+        .theme-list { display: flex; flex-direction: column; gap: 8px; max-width: 660px; }
+        .theme-btn { 
+            padding: 12px 16px; background: var(--bg-secondary); border: 2px solid transparent; 
+            border-radius: 8px; color: var(--text-normal); cursor: pointer; font-weight: bold; 
+            display: flex; align-items: center; gap: 16px; transition: 0.2s;
+        }
+        .theme-btn.selected { border-color: var(--brand); background: var(--bg-tertiary); }
+        .theme-preview-circle { width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.1); }
+
         .nitro-banner { background: linear-gradient(90deg, #ff73fa, #5865f2); padding: 15px; border-radius: 8px; color: white; margin-bottom: 20px; }
         
-        /* Updated Theme Rows */
-        .theme-list { display: flex; flex-direction: column; gap: 10px; max-width: 660px; }
-        .theme-btn { 
-            padding: 12px 16px; background: var(--inner-bg, #2b2d31); border: 2px solid transparent; 
-            border-radius: 8px; color: var(--text-normal, #fff); cursor: pointer; font-weight: bold; 
-            display: flex; align-items: center; gap: 16px; text-align: left; transition: 0.2s;
-        }
-        .theme-btn:hover { border-color: var(--brand, #5865f2); background: var(--card-bg, #1e1f22); }
-        .theme-btn.selected { border-color: var(--brand, #5865f2); background: var(--card-bg, #1e1f22); }
-        
-        .theme-preview { width: 24px; height: 24px; border-radius: 50%; border: 2px solid; box-sizing: border-box; }
-
-        /* ==== DYNAMIC THEME CSS VARIABLES ==== */
-        /* These variables ensure Light Mode and Custom Themes actually recolor the whole app seamlessly */
-        /* Default Discord Colors */
-        body.theme-default.mode-dark { --bg-primary: #313338; --bg-secondary: #2b2d31; --bg-tertiary: #1e1f22; --text-normal: #dbdee1; --text-muted: #b5bac1; --card-bg: #1e1f22; --inner-bg: #2b2d31; --brand: #5865f2; }
-        body.theme-default.mode-light { --bg-primary: #f2f3f5; --bg-secondary: #e3e5e8; --bg-tertiary: #d3d5d8; --text-normal: #060607; --text-muted: #4e5058; --card-bg: #fff; --inner-bg: #f2f3f5; --brand: #5865f2; }
-        
-        /* Beige */
-        body.theme-beige.mode-dark { --bg-primary: #5c554b; --bg-secondary: #4a443c; --bg-tertiary: #38332d; --text-normal: #eee; --text-muted: #ccc; --card-bg: #4a443c; --inner-bg: #38332d; --brand: #8b7355; }
-        body.theme-beige.mode-light { --bg-primary: #f5f5dc; --bg-secondary: #e8e8ce; --bg-tertiary: #dbdbc0; --text-normal: #333; --text-muted: #555; --card-bg: #fff; --inner-bg: #e8e8ce; --brand: #8b7355; }
-        
-        /* Nature */
-        body.theme-nature.mode-dark { --bg-primary: #1b3320; --bg-secondary: #142918; --bg-tertiary: #0e1c10; --text-normal: #e8f5e9; --text-muted: #a5d6a7; --card-bg: #142918; --inner-bg: #0e1c10; --brand: #2e7d32; }
-        body.theme-nature.mode-light { --bg-primary: #e8f5e9; --bg-secondary: #c8e6c9; --bg-tertiary: #a5d6a7; --text-normal: #1b5e20; --text-muted: #2e7d32; --card-bg: #fff; --inner-bg: #c8e6c9; --brand: #2e7d32; }
-        
-        /* Lava */
-        body.theme-lava.mode-dark { --bg-primary: #3b1c1c; --bg-secondary: #2b1414; --bg-tertiary: #1f0f0f; --text-normal: #ffcdd2; --text-muted: #ef9a9a; --card-bg: #2b1414; --inner-bg: #1f0f0f; --brand: #c62828; }
-        body.theme-lava.mode-light { --bg-primary: #ffebee; --bg-secondary: #ffcdd2; --bg-tertiary: #ef9a9a; --text-normal: #b71c1c; --text-muted: #c62828; --card-bg: #fff; --inner-bg: #ffcdd2; --brand: #c62828; }
-
-        /* Nitro Tag Styles */
+        /* Nitro Tag */
         .nitro-tag {
             background: linear-gradient(90deg, #ff73fa, #00a8fc);
-            color: white;
-            font-size: 9px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: 800;
-            margin-left: 6px;
-            vertical-align: middle;
-            text-transform: uppercase;
+            color: white; font-size: 9px; padding: 2px 6px; border-radius: 4px;
+            font-weight: 800; margin-left: 6px; text-transform: uppercase;
         }
 
-        /* User Dropup Menu */
-        .user-dropup {
-            position: absolute;
-            bottom: 60px;
-            left: 80px;
-            width: 220px;
-            background: var(--bg-tertiary, #111214);
-            border-radius: 8px;
-            padding: 8px;
-            display: none; /* Hidden by default */
-            flex-direction: column;
-            gap: 4px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
-            z-index: 1000;
-        }
-
-        .dropup-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            color: var(--text-normal, #dbdee1);
-            transition: background 0.2s;
-        }
-
-        .dropup-item:hover {
-            background: var(--brand, #5865f2);
-            color: white;
-        }
-
-        .dropup-icon {
-            width: 18px;
-            height: 18px;
-            filter: brightness(0) invert(1);
-        }
-
-        .dropup-divider {
-            height: 1px;
-            background: var(--bg-primary, #313338);
-            margin: 4px 0;
-        }
-        
         /* BASE STYLES */
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: var(--bg-primary, #313338); color: var(--text-normal, #dbdee1); overflow: hidden; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: var(--bg-primary); color: var(--text-normal); overflow: hidden; }
         .app-container { display: flex; height: 100vh; width: 100vw; }
         
         /* SIDEBARS */
-        .server-bar { width: 72px; background: var(--bg-tertiary, #1e1f22); display: flex; flex-direction: column; align-items: center; padding-top: 12px; gap: 8px; flex-shrink: 0; }
-        .server-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--bg-primary, #313338); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; overflow: hidden; color: var(--text-normal, white); font-weight: bold; }
-        .server-icon:hover { border-radius: 15px; background: var(--brand, #5865f2); color: white;}
+        .server-bar { width: 72px; background: var(--bg-tertiary); display: flex; flex-direction: column; align-items: center; padding-top: 12px; gap: 8px; flex-shrink: 0; }
+        .server-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--bg-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; overflow: hidden; color: var(--text-normal); font-weight: bold; font-size: 18px; }
+        .server-icon:hover, .server-icon.active { border-radius: 15px; background: var(--brand); color: white; }
+        .server-icon img { width: 28px; height: 28px; filter: brightness(0) invert(1); }
 
-        .channel-bar { width: 240px; background: var(--bg-secondary, #2b2d31); display: flex; flex-direction: column; flex-shrink: 0; }
-        .channel-header { padding: 16px; font-weight: bold; color: var(--text-normal, white); border-bottom: 1px solid var(--bg-tertiary, #1e1f22); }
-        .channel-list { padding: 8px; flex-grow: 1; }
-        .channel-item { padding: 8px 12px; border-radius: 4px; color: var(--text-muted, #949ba4); cursor: pointer; margin-bottom: 2px; display: flex; align-items: center; transition: 0.1s; }
-        .channel-item:before { content: "#"; margin-right: 8px; font-size: 20px; color: var(--text-muted, #5f636a); }
-        .channel-item:hover { background: var(--bg-primary, #35373c); color: var(--text-normal, #dbdee1); }
-        .channel-item.active { background: var(--card-bg, #3f4147); color: var(--text-normal, white); }
+        .channel-bar { width: 240px; background: var(--bg-secondary); display: flex; flex-direction: column; flex-shrink: 0; }
+        .channel-header { padding: 16px; font-weight: bold; color: var(--text-normal); border-bottom: 1px solid rgba(0,0,0,0.1); }
+        .channel-list { padding: 8px; flex-grow: 1; overflow-y: auto; }
+        .channel-item { padding: 8px 12px; border-radius: 4px; color: var(--text-muted); cursor: pointer; margin-bottom: 2px; display: flex; align-items: center; }
+        .channel-item:hover { background: var(--bg-primary); color: var(--text-normal); }
+        .channel-item.active { background: var(--bg-tertiary); color: var(--text-normal); }
+        .channel-item.dm-item { gap: 12px; }
+        .dm-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-tertiary); object-fit: cover; }
 
-        /* USER PANEL */
-        .user-panel { background: var(--bg-tertiary, #232428); padding: 8px; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: 0.1s; }
-        .user-panel:hover { background: var(--bg-primary, #35373c); }
-        .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--card-bg, #1e1f22); object-fit: cover; }
-        .user-info { display: flex; flex-direction: column; }
-        .user-name { font-size: 13px; font-weight: bold; color: var(--text-normal, white); }
-        .user-hash { font-size: 11px; color: var(--text-muted, #b5bac1); }
+        /* USER PANEL & DROPUP */
+        .user-panel { background: var(--bg-tertiary); padding: 8px; display: flex; align-items: center; gap: 10px; cursor: pointer; border-top: 1px solid rgba(0,0,0,0.05); }
+        .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-secondary); object-fit: cover; }
+        .user-info { display: flex; flex-direction: column; min-width: 0; }
+        .user-name { font-size: 13px; font-weight: bold; color: var(--text-normal); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .user-hash { font-size: 11px; color: var(--text-muted); }
 
-        /* CHAT AREA */
-        .chat-area { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg-primary, #313338); position: relative; }
+        .user-dropup {
+            position: absolute; bottom: 60px; left: 10px; width: 220px;
+            background: var(--bg-tertiary); border-radius: 8px; padding: 8px;
+            display: none; flex-direction: column; gap: 4px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); z-index: 1000;
+        }
+        .dropup-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; color: var(--text-normal); }
+        .dropup-item:hover { background: var(--brand); color: white; }
+
+        /* CHAT AREA (FULLY RESTORED) */
+        .chat-area { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg-primary); }
         .chat-messages { flex-grow: 1; overflow-y: auto; padding: 10px 0; }
         
         /* MESSAGE BLOCK */
         .msg-row { display: flex; padding: 2px 16px; width: 100%; box-sizing: border-box; position: relative; flex-direction: column; }
-        .msg-row:hover { background: rgba(0,0,0,0.05); }
+        .msg-row:hover { background: rgba(0,0,0,0.02); }
         .msg-row.first { margin-top: 14px; }
         
         .msg-flex { display: flex; width: 100%; }
@@ -202,111 +155,79 @@
         .content-col { flex-grow: 1; min-width: 0; padding-left: 10px; }
         
         /* ACTION BAR & REACTIONS */
-        .msg-actions { position: absolute; right: 16px; top: -16px; background: var(--bg-primary, #313338); border: 1px solid var(--bg-tertiary, #1e1f22); border-radius: 4px; display: none; z-index: 10; padding: 2px; }
+        .msg-actions { position: absolute; right: 16px; top: -16px; background: var(--bg-primary); border: 1px solid var(--bg-tertiary); border-radius: 4px; display: none; z-index: 10; padding: 2px; }
         .msg-row:hover .msg-actions { display: flex; }
-        .action-btn { padding: 4px 8px; cursor: pointer; color: var(--text-muted, #b5bac1); font-size: 14px; border-radius: 4px; position: relative; }
-        .action-btn:hover { background: var(--bg-secondary, #3f4147); color: var(--text-normal, white); }
+        .action-btn { padding: 4px 8px; cursor: pointer; color: var(--text-muted); font-size: 14px; border-radius: 4px; position: relative; }
+        .action-btn:hover { background: var(--bg-secondary); color: var(--text-normal); }
         
-        .emoji-picker { position: absolute; bottom: 100%; right: 0; background: var(--bg-secondary, #2b2d31); border: 1px solid var(--bg-tertiary, #1e1f22); border-radius: 6px; padding: 6px; display: none; gap: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 4px; z-index: 20; }
+        .emoji-picker { position: absolute; bottom: 100%; right: 0; background: var(--bg-secondary); border: 1px solid var(--bg-tertiary); border-radius: 6px; padding: 6px; display: none; gap: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 4px; z-index: 20; }
         .emoji-picker span { cursor: pointer; padding: 4px; border-radius: 4px; transition: 0.1s; font-size: 18px; }
-        .emoji-picker span:hover { background: var(--bg-primary, #3f4147); transform: scale(1.1); }
+        .emoji-picker span:hover { background: var(--bg-primary); transform: scale(1.1); }
         .action-btn:hover .emoji-picker { display: flex; }
 
         .react-bar { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
-        .react-pill { background: var(--bg-secondary, #2b2d31); border: 1px solid transparent; border-radius: 6px; padding: 2px 6px; font-size: 12px; cursor: pointer; color: var(--text-muted, #b5bac1); position: relative; }
-        .react-pill.active { background: rgba(88,101,242,0.15); border-color: var(--brand, #5865f2); color: var(--brand, #5865f2); }
+        .react-pill { background: var(--bg-secondary); border: 1px solid transparent; border-radius: 6px; padding: 2px 6px; font-size: 12px; cursor: pointer; color: var(--text-muted); position: relative; }
+        .react-pill.active { background: rgba(88,101,242,0.15); border-color: var(--brand); color: var(--brand); }
 
-        .react-tooltip { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--bg-tertiary, #111214); padding: 8px; border-radius: 6px; display: none; flex-direction: column; gap: 6px; z-index: 100; min-width: max-content; box-shadow: 0 4px 12px rgba(0,0,0,0.5); margin-bottom: 6px; pointer-events: none; }
+        .react-tooltip { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--bg-tertiary); padding: 8px; border-radius: 6px; display: none; flex-direction: column; gap: 6px; z-index: 100; min-width: max-content; box-shadow: 0 4px 12px rgba(0,0,0,0.5); margin-bottom: 6px; pointer-events: none; }
         .react-pill:hover .react-tooltip { display: flex; }
-        .rt-user { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-normal, #dbdee1); }
+        .rt-user { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-normal); }
         .rt-pfp { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; }
 
         /* REPLIES & MEDIA */
-        .reply-line { color: var(--text-muted, #b5bac1); font-size: 13px; display: flex; align-items: center; margin-left: 20px; margin-bottom: 4px; opacity: 0.8; }
-        .reply-line:before { content: ""; width: 30px; height: 10px; border-left: 2px solid var(--text-muted, #4e5058); border-top: 2px solid var(--text-muted, #4e5058); border-top-left-radius: 6px; margin-right: 6px; margin-top: 10px; }
+        .reply-line { color: var(--text-muted); font-size: 13px; display: flex; align-items: center; margin-left: 20px; margin-bottom: 4px; opacity: 0.8; }
+        .reply-line:before { content: ""; width: 30px; height: 10px; border-left: 2px solid var(--text-muted); border-top: 2px solid var(--text-muted); border-top-left-radius: 6px; margin-right: 6px; margin-top: 10px; }
 
         .msg-header { margin-bottom: 2px; display: flex; align-items: center; gap: 8px; }
-        .username { color: var(--text-normal, white); font-weight: 500; font-size: 16px; cursor: pointer; }
-        .timestamp { color: var(--text-muted, #949ba4); font-size: 12px; }
-        .msg-text { color: var(--text-normal, #dbdee1); font-size: 15px; line-height: 1.4; word-break: break-word; }
-        .chat-img { max-width: 100%; max-height: 350px; border-radius: 8px; margin: 6px 0; display: block; background: var(--bg-secondary, #2b2d31); cursor: zoom-in; }
+        .username { color: var(--text-normal); font-weight: 500; font-size: 16px; cursor: pointer; }
+        .timestamp { color: var(--text-muted); font-size: 12px; }
+        .msg-text { color: var(--text-normal); font-size: 15px; line-height: 1.4; word-break: break-word; }
+        .chat-img { max-width: 100%; max-height: 350px; border-radius: 8px; margin: 6px 0; display: block; background: var(--bg-secondary); cursor: zoom-in; }
 
         /* INPUT AREA */
         .input-wrapper { padding: 0 16px 24px; position: relative; }
-        .preview-bar { background: var(--bg-secondary, #2b2d31); padding: 8px 16px; border-radius: 8px 8px 0 0; display: none; align-items: center; justify-content: space-between; font-size: 13px; color: var(--text-muted, #b5bac1); margin-bottom: 2px; }
+        .preview-bar { background: var(--bg-secondary); padding: 8px 16px; border-radius: 8px 8px 0 0; display: none; align-items: center; justify-content: space-between; font-size: 13px; color: var(--text-muted); margin-bottom: 2px; }
         .preview-img-container { position: relative; display: inline-block; }
         .preview-img { height: 60px; border-radius: 4px; }
         .cancel-btn { cursor: pointer; color: #f23f42; font-weight: bold; font-size: 16px; padding: 4px; }
         
-        .input-box { background: var(--bg-secondary, #383a40); padding: 10px 16px; border-radius: 8px; display: flex; align-items: center; gap: 12px; transition: 0.2s; }
-        .input-box input[type="text"] { background: transparent; border: none; color: var(--text-normal, #dcddde); flex-grow: 1; outline: none; font-size: 15px; }
+        .input-box { background: var(--input-bg); padding: 10px 16px; border-radius: 8px; display: flex; align-items: center; gap: 12px; transition: 0.2s; }
+        .input-box input { background: transparent; border: none; color: var(--text-normal); flex-grow: 1; outline: none; font-size: 15px; }
         
         .input-box.is-timeouted { opacity: 0.5; pointer-events: none; background: #212226; border: 1px solid #f23f42; }
         .input-box.is-timeouted input[type="text"]::placeholder { color: #f23f42; font-weight: bold; }
 
-        .typing-indicator { position: absolute; bottom: 4px; left: 16px; font-size: 13px; color: var(--text-muted, #b5bac1); font-weight: bold; height: 16px; }
+        .typing-indicator { position: absolute; bottom: 4px; left: 16px; font-size: 13px; color: var(--text-muted); font-weight: bold; height: 16px; }
 
         /* MEMBERS BAR */
-        .members-bar { width: 240px; background: var(--bg-secondary, #2b2d31); flex-shrink: 0; padding: 20px 8px; overflow-y: auto; }
-        .member-header { color: var(--text-muted, #949ba4); text-transform: uppercase; font-size: 12px; font-weight: bold; margin-bottom: 12px; padding-left: 8px; }
-        
-        .member-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 4px; color: var(--text-muted, #949ba4); cursor: pointer; transition: 0.1s; }
-        .member-item:hover { background: var(--bg-primary, #35373c); color: var(--text-normal, #dbdee1); } 
+        .members-bar { width: 240px; background: var(--bg-secondary); flex-shrink: 0; padding: 20px 8px; overflow-y: auto; }
+        .member-header { color: var(--text-muted); text-transform: uppercase; font-size: 12px; font-weight: bold; margin-bottom: 12px; padding-left: 8px; }
+        .member-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 4px; color: var(--text-muted); cursor: pointer; transition: 0.1s; }
+        .member-item:hover { background: var(--bg-primary); color: var(--text-normal); } 
         
         /* OFFLINE STYLES */
         .member-item.offline { opacity: 0.5; }
         .member-item.offline:hover { opacity: 1; }
-        
         .member-avatar-wrapper { position: relative; width: 32px; height: 32px; flex-shrink: 0; }
         .member-avatar-wrapper img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
-        
-        .status-dot { position: absolute; bottom: -2px; right: -2px; width: 10px; height: 10px; background: #23a559; border-radius: 50%; border: 2px solid var(--bg-secondary, #2b2d31); } 
-        .status-dot.offline { background: #80848e; } /* Grey dot */
+        .status-dot { position: absolute; bottom: -2px; right: -2px; width: 10px; height: 10px; background: #23a559; border-radius: 50%; border: 2px solid var(--bg-secondary); } 
+        .status-dot.offline { background: #80848e; } 
 
-        /* NEW AUTH MODAL STYLES */
-        #auth-overlay { 
-            position: fixed; 
-            inset: 0; 
-            background: rgba(0,0,0,0.9); 
-            display: none; /* JS will change this to flex */
-            justify-content: center; 
-            align-items: center; 
-            z-index: 2000; 
-        }
-        .auth-card { 
-            background: #313338; 
-            padding: 32px; 
-            border-radius: 8px; 
-            width: 340px; 
-            text-align: center; 
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-        }
-        .auth-input {
-            width: 100%; 
-            padding: 10px; 
-            margin-bottom: 10px; 
-            background: #1e1f22; 
-            border: 1px solid #1e1f22; 
-            color: white; 
-            border-radius: 4px; 
-            box-sizing: border-box; 
-            outline: none;
-        }
-        .auth-input:focus {
-            border-color: #5865f2;
-        }
-        
+        /* AUTH MODAL & LIGHTBOX & MINI PROFILE */
+        #auth-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 2000; }
+        .auth-card { background: #313338; padding: 32px; border-radius: 8px; width: 340px; text-align: center; }
+        .auth-input { width: 100%; padding: 10px; margin-bottom: 10px; background: #1e1f22; border: 1px solid #1e1f22; color: white; border-radius: 4px; box-sizing: border-box; }
         #lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 3000; display: none; justify-content: center; align-items: center; cursor: zoom-out; }
         #lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 4px; object-fit: contain; }
 
         .mini-profile-overlay { position: fixed; inset: 0; z-index: 1000; display: none; }
-        .mini-profile-card { position: absolute; width: 300px; background: var(--bg-tertiary, #111214); border-radius: 8px; box-shadow: 0 8px 16px rgba(0,0,0,0.4); overflow: hidden; z-index: 1001; display: none; flex-direction: column; }
-        .mini-profile-banner { height: 60px; background: var(--brand, #5865f2); }
-        .mini-profile-avatar { width: 80px; height: 80px; border-radius: 50%; border: 6px solid var(--bg-tertiary, #111214); margin-top: -40px; margin-left: 16px; background: var(--card-bg, #1e1f22); object-fit: cover; }
-        .mini-profile-body { padding: 12px 16px 16px; background: var(--bg-tertiary, #111214); color: var(--text-normal, #dbdee1); display: flex; flex-direction: column; gap: 4px; }
+        .mini-profile-card { position: absolute; width: 300px; background: var(--bg-tertiary); border-radius: 8px; box-shadow: 0 8px 16px rgba(0,0,0,0.4); overflow: hidden; z-index: 1001; display: none; flex-direction: column; }
+        .mini-profile-banner { height: 60px; background: var(--brand); }
+        .mini-profile-avatar { width: 80px; height: 80px; border-radius: 50%; border: 6px solid var(--bg-tertiary); margin-top: -40px; margin-left: 16px; background: var(--card-bg); object-fit: cover; }
+        .mini-profile-body { padding: 12px 16px 16px; background: var(--bg-tertiary); color: var(--text-normal); display: flex; flex-direction: column; gap: 4px; }
     </style>
 </head>
-<body>
+<body class="mode-dark">
 
 <div id="lightbox" onclick="this.style.display='none'">
     <img id="lightbox-img" src="">
@@ -318,7 +239,7 @@
     <img id="mp-pfp" class="mini-profile-avatar">
     <div class="mini-profile-body">
         <div style="font-size: 20px; font-weight: bold;" id="mp-name"></div>
-        <div style="font-size: 14px; color: var(--text-muted, #b5bac1);" id="mp-hash"></div>
+        <div style="font-size: 14px; color: var(--text-muted);" id="mp-hash"></div>
         <button id="mp-logout-btn" style="display:none; margin-top:12px; background:#f23f42; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer; font-weight:bold;">Log Out</button>
     </div>
 </div>
@@ -351,16 +272,44 @@
 </div>
 
 <div class="app-container">
-    <div class="server-bar"><div class="server-icon">P</div></div>
+    <div class="server-bar">
+        <!-- Direct Messages Icon -->
+        <div class="server-icon" id="icon-dm" onclick="switchView('dm')">
+            <img src="https://img.icons8.com/ios-filled/50/ffffff/discord-logo.png" alt="DMs">
+        </div>
+        <div style="width: 32px; height: 2px; background: var(--bg-secondary); border-radius: 1px;"></div>
+        <!-- Prime Server Icon -->
+        <div class="server-icon active" id="icon-prime" onclick="switchView('prime')">P</div>
+    </div>
     
     <div class="channel-bar">
-        <div class="channel-header">Prime Server</div>
-        <div class="channel-list">
-            <div class="channel-item active" data-channel="welcome">welcome</div>
-            <div class="channel-item" data-channel="general">general</div>
-            <div class="channel-item" data-channel="feedback">feedback</div>
-            <div class="channel-item" data-channel="support">support</div>
+        <!-- Prime Server Sidebar -->
+        <div id="sidebar-prime">
+            <div class="channel-header">Prime Server</div>
+            <div class="channel-list">
+                <div class="channel-item active" data-channel="welcome"># welcome</div>
+                <div class="channel-item" data-channel="general"># general</div>
+                <div class="channel-item" data-channel="feedback"># feedback</div>
+                <div class="channel-item" data-channel="support"># support</div>
+            </div>
         </div>
+
+        <!-- DM Sidebar (Phase 3 Prep) -->
+        <div id="sidebar-dm" style="display:none;">
+            <div class="channel-header">Direct Messages</div>
+            <div class="channel-list">
+                <div class="channel-item dm-item">
+                    <img src="https://api.dicebear.com/7.x/pixel-art/svg?seed=Friend" class="dm-avatar">
+                    <span>Friend 1</span>
+                </div>
+                <div style="padding: 10px; color: var(--text-muted); font-size: 11px; font-weight: bold; text-transform: uppercase;">Direct Messages</div>
+                <div class="channel-item dm-item active">
+                    <img src="https://api.dicebear.com/7.x/pixel-art/svg?seed=System" class="dm-avatar">
+                    <span>System Log</span>
+                </div>
+            </div>
+        </div>
+
         <div id="user-dropup" class="user-dropup">
             <div class="dropup-item" onclick="openSettings()">
                 <img src="https://img.icons8.com/ios-filled/50/ffffff/settings.png" class="dropup-icon">
@@ -389,7 +338,7 @@
                 <span class="cancel-btn" onclick="cancelAttachment()">✕</span>
             </div>
             <div class="input-box" id="input-box-wrapper">
-                <label style="color:var(--text-muted, #b5bac1); cursor:pointer; font-size:20px; font-weight:bold;" title="Upload Image">
+                <label style="color:var(--text-muted); cursor:pointer; font-size:20px; font-weight:bold;" title="Upload Image">
                     +<input type="file" id="file-upload" accept="image/*" style="display:none;" onchange="handleFileAsBase64(this)">
                 </label>
                 <input type="text" id="chat-input" placeholder="Message #welcome">
@@ -398,7 +347,7 @@
         </div>
     </div>
 
-    <div class="members-bar">
+    <div class="members-bar" id="members-bar">
         <div class="member-header">Online — <span id="online-count">0</span></div>
         <div id="member-list-online"></div>
         
@@ -407,10 +356,9 @@
     </div>
 </div>
 
-<!-- SETTINGS MODAL (FULL SCREEN) -->
+<!-- SETTINGS MODAL -->
 <div id="settings-modal" class="modal-overlay">
     <div class="settings-container">
-        
         <div class="settings-sidebar">
             <div class="sidebar-inner">
                 <div class="sidebar-header">USER SETTINGS</div>
@@ -424,89 +372,81 @@
                 </div>
             </div>
         </div>
-
+        
         <div class="settings-content">
-            <!-- ACCOUNT TAB -->
-            <div id="settings-account" style="display: block;">
-                <h2>My Account</h2>
-                
-                <div class="profile-edit-card">
-                    <div class="profile-banner-preview"></div>
-                    <div class="profile-header-row">
-                        <div class="editable-avatar" onclick="document.getElementById('pfp-upload').click()">
-                            <img src="https://via.placeholder.com/80" id="settings-pfp-preview">
-                            <div class="avatar-overlay">CHANGE PFP</div>
+            <div class="content-inner">
+                <!-- ACCOUNT TAB -->
+                <div id="settings-account" style="display: block;">
+                    <h2>My Account</h2>
+                    <div class="profile-edit-card">
+                        <div class="profile-banner-preview"></div>
+                        <div class="profile-header-row">
+                            <div class="editable-avatar" onclick="document.getElementById('pfp-upload').click()">
+                                <img id="settings-pfp-preview">
+                                <div class="avatar-overlay">CHANGE PFP</div>
+                            </div>
+                            <div style="margin-left: 15px; padding-bottom: 5px;">
+                                <h3 id="settings-username-display" style="color:white; margin:0;">Username</h3>
+                            </div>
                         </div>
-                        <div style="margin-left: 15px; padding-bottom: 5px;">
-                            <h3 id="settings-username-display" style="margin:0;">Username</h3>
+                        <div class="profile-body-inner">
+                            <div class="input-group">
+                                <label>USERNAME</label>
+                                <input type="text" id="edit-username" class="settings-input" disabled>
+                            </div>
+                            <div class="input-group">
+                                <label>NEW PASSWORD</label>
+                                <input type="password" id="edit-password" class="settings-input" placeholder="Enter new password">
+                            </div>
+                            <input type="file" id="pfp-upload" style="display:none" accept="image/*" onchange="previewPfp(event)">
+                            <button class="settings-btn brand-btn" style="width: max-content;" onclick="saveAccountSettings()">Update Profile</button>
                         </div>
                     </div>
-
-                    <div class="profile-body-inner">
-                        <div class="input-group">
-                            <label>USERNAME</label>
-                            <input type="text" id="edit-username" class="settings-input" disabled>
-                        </div>
-                        <div class="input-group">
-                            <label>NEW PASSWORD</label>
-                            <input type="password" id="edit-password" class="settings-input" placeholder="Enter new password">
-                        </div>
-                        
-                        <input type="file" id="pfp-upload" style="display:none" accept="image/*" onchange="previewPfp(event)">
-                        
-                        <button class="settings-btn brand-btn" style="width: max-content;" onclick="saveAccountSettings()">Update Profile</button>
+                    <div class="account-actions">
+                        <button class="settings-btn danger-btn full-width" onclick="logOut()">Log Out</button>
+                        <button class="settings-btn danger-btn full-width" onclick="deleteAccountAlert()">Delete Account</button>
                     </div>
                 </div>
 
-                <div class="account-actions">
-                    <button class="settings-btn danger-btn full-width" onclick="logOut()">Log Out</button>
-                    <button class="settings-btn danger-btn full-width" onclick="deleteAccountAlert()">Delete Account</button>
-                </div>
-            </div>
-
-            <!-- THEMES TAB -->
-            <div id="settings-themes" style="display: none;">
-                <h2>Appearance</h2>
-                
-                <div id="nitro-theme-upsell" class="nitro-banner">
-                    🚀 <strong>Nitro Users Only!</strong> Subscribe to unlock custom themes.
-                </div>
-
-                <div id="theme-controls">
-                    <div class="input-group" style="max-width: 660px; margin-bottom: 20px;">
-                        <label>COLOR SCHEME</label>
-                        <select id="mode-select" class="settings-input">
-                            <option value="dark">Dark Mode</option>
-                            <option value="light">Light Mode</option>
-                        </select>
-                    </div>
-
-                    <div class="input-group">
-                        <label>THEME</label>
-                        <div class="theme-list">
-                            <button class="theme-btn" onclick="selectTheme('default', event)">
-                                <div class="theme-preview" style="background: #313338; border-color: #2b2d31;"></div>
-                                <span>Default Gray</span>
-                            </button>
-                            <button class="theme-btn" onclick="selectTheme('beige', event)">
-                                <div class="theme-preview" style="background: #5c554b; border-color: #4a443c;"></div>
-                                <span>Beige</span>
-                            </button>
-                            <button class="theme-btn" onclick="selectTheme('nature', event)">
-                                <div class="theme-preview" style="background: #1b3320; border-color: #142918;"></div>
-                                <span>Nature</span>
-                            </button>
-                            <button class="theme-btn" onclick="selectTheme('lava', event)">
-                                <div class="theme-preview" style="background: #3b1c1c; border-color: #2b1414;"></div>
-                                <span>Lava</span>
-                            </button>
-                        </div>
-                    </div>
+                <!-- THEMES TAB -->
+                <div id="settings-themes" style="display:none;">
+                    <h2>Appearance</h2>
+                    <div id="nitro-theme-upsell" class="nitro-banner">🚀 <strong>Nitro Users Only!</strong> Subscribe to unlock custom themes.</div>
                     
-                    <button class="settings-btn brand-btn" style="margin-top: 20px;" onclick="saveThemeSettings()">Update Theme</button>
+                    <div id="theme-controls">
+                        <div class="input-group" style="max-width: 660px; margin-bottom: 20px;">
+                            <label>COLOR SCHEME</label>
+                            <select id="mode-select" class="settings-input">
+                                <option value="dark">Dark Mode</option>
+                                <option value="light">Light Mode</option>
+                            </select>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>THEME</label>
+                            <div class="theme-list">
+                                <button class="theme-btn" id="btn-default" onclick="selectTheme('default', event)">
+                                    <div class="theme-preview-circle" style="background: #313338; border-color: #2b2d31;"></div>
+                                    <span>Default Gray</span>
+                                </button>
+                                <button class="theme-btn" id="btn-beige" onclick="selectTheme('beige', event)">
+                                    <div class="theme-preview-circle" style="background: #5c554b; border-color: #4a443c;"></div>
+                                    <span>Beige</span>
+                                </button>
+                                <button class="theme-btn" id="btn-nature" onclick="selectTheme('nature', event)">
+                                    <div class="theme-preview-circle" style="background: #1b3320; border-color: #142918;"></div>
+                                    <span>Nature</span>
+                                </button>
+                                <button class="theme-btn" id="btn-lava" onclick="selectTheme('lava', event)">
+                                    <div class="theme-preview-circle" style="background: #3b1c1c; border-color: #2b1414;"></div>
+                                    <span>Lava</span>
+                                </button>
+                            </div>
+                        </div>
+                        <button class="settings-btn brand-btn" style="margin-top: 20px;" onclick="saveThemeSettings()">Update Appearance</button>
+                    </div>
                 </div>
             </div>
-
         </div>
     </div>
 </div>
@@ -540,7 +480,7 @@
     let tempSelectedTheme = currentTheme;
     let tempPfpBase64 = null;
 
-    // --- CORE LOGIC ---
+    // --- UTILS & CORE ---
     function isAdmin(username, id = null) {
         if (id === 'b1ecb8f0-a758-4a6a-81ec-11742f994061') return true;
         if (username && username.trim().toLowerCase() === 'prime') return true;
@@ -549,6 +489,23 @@
     
     function getPfp(user) { return livePfps[user] || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${user}`; }
     function getUserClass(user) { return `avatar-${user.replace('#', '-')}`; }
+
+    // --- VIEWS & NAVIGATION ---
+    function switchView(view) {
+        const isDM = (view === 'dm');
+        document.getElementById('sidebar-prime').style.display = isDM ? 'none' : 'block';
+        document.getElementById('sidebar-dm').style.display = isDM ? 'block' : 'none';
+        document.getElementById('members-bar').style.display = isDM ? 'none' : 'block';
+        document.getElementById('icon-dm').classList.toggle('active', isDM);
+        document.getElementById('icon-prime').classList.toggle('active', !isDM);
+        
+        const container = document.getElementById('message-container');
+        if (isDM) {
+            container.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><h3>Welcome to your DMs</h3>Start a conversation with a friend! (Phase 3)</div>';
+        } else {
+            loadMessages();
+        }
+    }
 
     function toggleUserMenu(event) {
         event.stopPropagation();
@@ -561,15 +518,15 @@
         if(menu) menu.style.display = 'none';
     };
 
-    // --- SETTINGS UI LOGIC ---
+    // --- SETTINGS UI & LOGIC ---
     function openSettings() {
         document.getElementById('settings-modal').style.display = 'flex';
         document.getElementById('user-dropup').style.display = 'none';
     
-        // Fill in current data
         document.getElementById('edit-username').value = myUsername || 'Unknown';
         document.getElementById('settings-username-display').innerText = myUsername || 'Unknown';
         document.getElementById('settings-pfp-preview').src = myAvatar || 'https://via.placeholder.com/80';
+        document.getElementById('mode-select').value = currentMode;
     
         const upsell = document.getElementById('nitro-theme-upsell');
         const controls = document.getElementById('theme-controls');
@@ -583,6 +540,8 @@
             controls.style.opacity = '0.4';
             controls.style.pointerEvents = 'none'; 
         }
+        
+        selectTheme(currentTheme); // Visually highlight the correct theme btn
     }
 
     function closeSettings() {
@@ -631,6 +590,7 @@
                 if (updates.avatar_base64) {
                     localStorage.setItem('primeAvatar', tempPfpBase64);
                     myAvatar = tempPfpBase64;
+                    document.getElementById('my-pfp').src = myAvatar;
                 }
                 document.getElementById('edit-password').value = '';
                 alert("Account Updated Successfully!");
@@ -644,10 +604,14 @@
     }
 
     function selectTheme(themeName, ev) {
+        if (!window.myIsNitro && themeName !== 'default') return;
         tempSelectedTheme = themeName;
         document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('selected'));
         if (ev && ev.currentTarget) {
             ev.currentTarget.classList.add('selected');
+        } else {
+            const initialBtn = document.getElementById(`btn-${themeName}`);
+            if (initialBtn) initialBtn.classList.add('selected');
         }
     }
 
@@ -675,13 +639,8 @@
         applyThemeClasses();
         const modeSelect = document.getElementById('mode-select');
         if (modeSelect) modeSelect.value = currentMode;
-        
-        // Ensure correct theme button is highlighted
-        const initialThemeBtn = document.querySelector(`.theme-btn[onclick*="'${currentTheme}'"]`);
-        if(initialThemeBtn) initialThemeBtn.classList.add('selected');
     });
 
-    // --- ACCOUNT ACTIONS ---
     function logOut() {
         localStorage.clear(); 
         window.location.reload(); 
@@ -691,110 +650,7 @@
         alert("This feature is under construction. For assistance, please contact #support");
     }
 
-    async function refreshMemberLists(presenceState) {
-        const { data: allAccounts, error } = await db.from('Accounts').select('*');
-        if (error) return console.error("Database Error:", error);
-        if (!allAccounts) return;
-
-        const onlineUUIDs = Object.keys(presenceState);
-        const onlineList = document.getElementById('member-list-online');
-        const offlineList = document.getElementById('member-list-offline');
-        
-        onlineList.innerHTML = '';
-        offlineList.innerHTML = '';
-        
-        allAccounts.forEach(account => {
-            const isOnline = onlineUUIDs.includes(account.id);
-            const isAdm = isAdmin(account.username, account.id);
-            const isNitro = account.is_nitro || false;
-
-            const safeAvatar = account.avatar_base64 || 'https://via.placeholder.com/40';
-            livePfps[account.username] = safeAvatar;
-
-            let nameColor = '#dbdee1';
-            let extraTags = '';
-
-            if (isAdm) {
-                nameColor = '#ffcc00';
-                extraTags += ' 👑';
-            } 
-            if (isNitro) {
-                if (!isAdm) nameColor = '#00a8fc';
-                extraTags += '<span class="nitro-tag">Nitro</span>';
-            }
-
-            const memberHTML = `
-                <div class="member-item ${isOnline ? '' : 'offline'}" onclick="showMiniProfile(event, '${account.username}', false, ${isAdm}, ${isNitro})">
-                    <div class="member-avatar-wrapper">
-                        <img src="${safeAvatar}" class="msg-pfp avatar-${account.id}" onerror="this.src='https://via.placeholder.com/40'">
-                        ${isOnline ? '<div class="status-dot"></div>' : ''}
-                    </div>
-                    <span style="color:${nameColor}">${account.username}${extraTags}</span>
-                </div>`;
-
-            if (isOnline) onlineList.innerHTML += memberHTML;
-            else offlineList.innerHTML += memberHTML;
-        });
-
-        document.getElementById('online-count').innerText = onlineUUIDs.length;
-    }
-    
-    // --- UI & UTILS ---
-    function openLightbox(src) { document.getElementById('lightbox-img').src = src; document.getElementById('lightbox').style.display = 'flex'; }
-    function closeMiniProfile() { document.getElementById('mp-overlay').style.display = 'none'; document.getElementById('mp-card').style.display = 'none'; }
-    
-    function openMyProfile(event) {
-        event.stopPropagation();
-        document.getElementById('user-dropup').style.display = 'none'; 
-        const isAdmSelf = isAdmin(myUsername, myUUID);
-        showMiniProfile(event, myUsername, true, isAdmSelf, window.myIsNitro);
-    }
-
-    function showMiniProfile(event, username, isSelf = false, isAdm = false, isNitro = false) {
-        const card = document.getElementById('mp-card');
-        const overlay = document.getElementById('mp-overlay');
-        
-        const safePfp = livePfps[username] || (isSelf ? myAvatar : 'https://via.placeholder.com/40');
-
-        let nameColor = 'white';
-        let extraTags = '';
-        let hashContent = 'MEMBER';
-
-        if (isAdm) {
-            nameColor = '#ffcc00';
-            extraTags += ' 👑';
-            hashContent = 'ADMIN';
-        }
-        if (isNitro) {
-            if (!isAdm) nameColor = '#00a8fc';
-            extraTags += '<span class="nitro-tag" style="margin-left:0;">Nitro</span>';
-            if (isAdm) hashContent = 'ADMIN <span class="nitro-tag" style="margin-left:6px;">Nitro</span>';
-        }
-
-        document.getElementById('mp-pfp').src = safePfp;
-        document.getElementById('mp-name').innerHTML = `<span style="color:${nameColor}">${username}${extraTags}</span>`;
-        document.getElementById('mp-hash').innerHTML = hashContent;
-
-        const logoutBtn = document.getElementById('mp-logout-btn');
-        if (isSelf) {
-            logoutBtn.style.display = 'block';
-            logoutBtn.onclick = () => { localStorage.clear(); location.reload(); };
-        } else {
-            logoutBtn.style.display = 'none';
-        }
-
-        let top = event.clientY - 100;
-        let left = event.clientX - 320; 
-        if (left < 10) left = event.clientX + 20; 
-        if (top + 350 > window.innerHeight) top = window.innerHeight - 360; 
-        if (top < 10) top = 10;
-
-        card.style.top = top + 'px'; 
-        card.style.left = left + 'px';
-        overlay.style.display = 'block'; 
-        card.style.display = 'flex';
-    }
-    
+    // --- TIMEOUTS ---
     function applyTimeoutUI(expiresAt) {
         const input = document.getElementById('chat-input'), box = document.getElementById('input-box-wrapper');
         box.classList.add('is-timeouted'); input.disabled = true;
@@ -825,6 +681,59 @@
         }
     }
 
+    // --- CHAT UI INTERACTIONS ---
+    function openLightbox(src) { document.getElementById('lightbox-img').src = src; document.getElementById('lightbox').style.display = 'flex'; }
+    function closeMiniProfile() { document.getElementById('mp-overlay').style.display = 'none'; document.getElementById('mp-card').style.display = 'none'; }
+    
+    function showMiniProfile(event, username, isSelf = false, isAdm = false, isNitro = false) {
+        const card = document.getElementById('mp-card');
+        const overlay = document.getElementById('mp-overlay');
+        
+        const safePfp = livePfps[username] || (isSelf ? myAvatar : 'https://via.placeholder.com/40');
+
+        let nameColor = 'var(--text-normal)';
+        let extraTags = '';
+        let hashContent = 'MEMBER';
+
+        if (isAdm) {
+            nameColor = '#ffcc00';
+            extraTags += ' 👑';
+            hashContent = 'ADMIN';
+        }
+        if (isNitro) {
+            if (!isAdm) nameColor = '#00a8fc';
+            extraTags += '<span class="nitro-tag">Nitro</span>';
+            if (isAdm) {
+                hashContent = 'ADMIN <span class="nitro-tag" style="margin-left:6px;">Nitro</span>';
+            } else {
+                hashContent = '<span class="nitro-tag" style="margin-left:0;">Nitro</span>';
+            }
+        }
+
+        document.getElementById('mp-pfp').src = safePfp;
+        document.getElementById('mp-name').innerHTML = `<span style="color:${nameColor}">${username}${extraTags}</span>`;
+        document.getElementById('mp-hash').innerHTML = hashContent;
+
+        const logoutBtn = document.getElementById('mp-logout-btn');
+        if (isSelf) {
+            logoutBtn.style.display = 'block';
+            logoutBtn.onclick = () => { logOut(); };
+        } else {
+            logoutBtn.style.display = 'none';
+        }
+
+        let top = event.clientY - 100;
+        let left = event.clientX - 320; 
+        if (left < 10) left = event.clientX + 20; 
+        if (top + 350 > window.innerHeight) top = window.innerHeight - 360; 
+        if (top < 10) top = 10;
+
+        card.style.top = top + 'px'; 
+        card.style.left = left + 'px';
+        overlay.style.display = 'block'; 
+        card.style.display = 'flex';
+    }
+
     async function addReaction(msgId, emoji) {
         const { data } = await db.from('Messages').select('reactions').eq('id', msgId).single();
         let r = data.reactions || {};
@@ -844,6 +753,7 @@
     function cancelReply() { pendingReply = null; document.getElementById('reply-bar').style.display = 'none'; }
     function cancelAttachment() { pendingAttachment = null; document.getElementById('attach-bar').style.display = 'none'; }
 
+    // --- ATTACHMENTS ---
     function handleAvatarUpload(input) {
         const file = input.files[0]; if (!file) return;
         const reader = new FileReader();
@@ -880,17 +790,17 @@
         reader.readAsDataURL(file);
     }
 
+    // --- CHAT RENDERING AND LOADING ---
     function renderMessage(m, appendOnly = false) {
         try {
             const container = document.getElementById('message-container');
             const isFirst = (m.username !== lastUser || (new Date(m.created_at) - lastTime) > 300000);
             
-            // Safely check Admin status
             const isAdm = isAdmin(m.username, m.sender_id);
             const isNitro = m.isNitro || false;
             const uClass = getUserClass(m.username);
             
-            let nameColor = isAdm ? '#ffcc00' : (isNitro ? '#00a8fc' : '');
+            let nameColor = isAdm ? '#ffcc00' : (isNitro ? '#00a8fc' : 'var(--text-normal)');
             let tags = (isAdm ? ' 👑' : '') + (isNitro ? ' <span class="nitro-tag">Nitro</span>' : '');
 
             let content = m.content || "";
@@ -913,7 +823,6 @@
             const row = document.createElement('div');
             row.className = `msg-row ${isFirst || replyHtml ? 'first' : ''}`;
             
-            // Safely parse Reactions so null data doesn't crash the loop
             let reactHtml = '<div class="react-bar">';
             if (m.reactions && typeof m.reactions === 'object' && Object.keys(m.reactions).length > 0) {
                 for (let [emoji, users] of Object.entries(m.reactions)) {
@@ -1019,16 +928,12 @@
     async function loadMessages() {
         try {
             const container = document.getElementById('message-container');
-            
-            // Fetch messages
             const { data: msgs, error: msgErr } = await db.from('Messages').select('*').eq('channel', currentChannel).order('created_at', { ascending: true });
             if (msgErr) throw new Error("Database error loading messages: " + msgErr.message);
 
-            // Fetch accounts to map sender_id back to username AND avatar_base64
             const { data: accounts, error: accErr } = await db.from('Accounts').select('id, username, avatar_base64, is_nitro');
             if (accErr) throw new Error("Database error loading accounts: " + accErr.message);
 
-            // Clear chat window
             container.innerHTML = ''; 
             lastUser = null; 
             lastTime = 0;
@@ -1047,20 +952,66 @@
 
             if (msgs && msgs.length > 0) {
                 msgs.forEach(m => {
-                    // Map the hidden UUID back to the real username and PFP for the UI
                     m.username = idToName[m.sender_id] || "Unknown User";
                     m.pfp = idToPfp[m.sender_id] || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${m.username}`;
                     m.isNitro = idToNitro[m.sender_id] || false;
                     renderMessage(m, true);
                 });
-                // Ensure chat scrolls to the bottom
                 container.scrollTop = container.scrollHeight;
             } else {
-                container.innerHTML = '<div style="padding:20px; color:#b5bac1; text-align:center;">No messages here yet. Be the first to say hi!</div>';
+                container.innerHTML = '<div style="padding:20px; color:var(--text-muted); text-align:center;">No messages here yet. Be the first to say hi!</div>';
             }
         } catch (err) {
             console.error("loadMessages failed:", err);
         }
+    }
+
+    async function refreshMemberLists(presenceState) {
+        const { data: allAccounts, error } = await db.from('Accounts').select('*');
+        if (error) return console.error("Database Error:", error);
+        if (!allAccounts) return;
+
+        const onlineUUIDs = Object.keys(presenceState);
+        const onlineList = document.getElementById('member-list-online');
+        const offlineList = document.getElementById('member-list-offline');
+        
+        onlineList.innerHTML = '';
+        offlineList.innerHTML = '';
+        
+        allAccounts.forEach(account => {
+            const isOnline = onlineUUIDs.includes(account.id);
+            const isAdm = isAdmin(account.username, account.id);
+            const isNitro = account.is_nitro || false;
+
+            const safeAvatar = account.avatar_base64 || 'https://via.placeholder.com/40';
+            livePfps[account.username] = safeAvatar;
+
+            let nameColor = 'var(--text-muted)';
+            let extraTags = '';
+
+            if (isAdm) {
+                nameColor = '#ffcc00';
+                extraTags += ' 👑';
+            } 
+            if (isNitro) {
+                if (!isAdm) nameColor = '#00a8fc';
+                extraTags += '<span class="nitro-tag">Nitro</span>';
+            }
+
+            const memberHTML = `
+                <div class="member-item ${isOnline ? '' : 'offline'}" onclick="showMiniProfile(event, '${account.username}', false, ${isAdm}, ${isNitro})">
+                    <div class="member-avatar-wrapper">
+                        <img src="${safeAvatar}" class="msg-pfp avatar-${account.id}" onerror="this.src='https://via.placeholder.com/40'">
+                        ${isOnline ? '<div class="status-dot"></div>' : ''}
+                    </div>
+                    <span style="color:${nameColor}">${account.username}${extraTags}</span>
+                </div>`;
+
+            if (isOnline) onlineList.innerHTML += memberHTML;
+            else offlineList.innerHTML += memberHTML;
+        });
+
+        document.getElementById('online-count').innerText = onlineUUIDs.length;
     }
 
     // --- AUTH LOGIC ---
@@ -1121,7 +1072,7 @@
         window.myIsNitro = account?.is_nitro || false;
         
         const isAdm = isAdmin(myUsername, myUUID); 
-        let nameColor = '#dbdee1';
+        let nameColor = 'var(--text-normal)';
         let extraTags = '';
         let hashContent = 'MEMBER';
 
@@ -1142,7 +1093,6 @@
 
         document.getElementById('my-name').innerHTML = `<span style="color:${nameColor}">${myUsername}${extraTags}</span>`;
         document.getElementById('my-hash').innerHTML = hashContent;
-        document.getElementById('my-hash').style.color = isAdm ? '#ffcc00' : (window.myIsNitro ? '#dbdee1' : '#b5bac1');
         
         const myPfpImg = document.getElementById('my-pfp');
         myPfpImg.src = myAvatar || 'https://via.placeholder.com/40';
@@ -1168,6 +1118,7 @@
 
     document.querySelectorAll('.channel-item').forEach(el => {
         el.onclick = () => {
+            if(el.classList.contains('dm-item')) return; // handled separately
             document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
             el.classList.add('active');
             currentChannel = el.dataset.channel;
