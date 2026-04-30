@@ -4,23 +4,23 @@
     <meta charset="UTF-8">
     <title>Discourse | Prime Server</title>
     <style>
-
         /* SETTINGS MODAL STYLES */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0, 0, 0, 0.7); z-index: 9999;
-            display: flex; justify-content: center; align-items: center;
+            background: #313338; z-index: 9999;
+            display: none; /* Controlled by JS */
+            justify-content: center; align-items: center;
         }
         .settings-container {
-            width: 800px; height: 600px; max-width: 95%; max-height: 95%;
-            background: #313338; border-radius: 8px; display: flex; overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 100vw; height: 100vh;
+            background: #313338; display: flex; overflow: hidden;
         }
         .settings-sidebar {
-            width: 250px; background: #2b2d31; padding: 20px;
-            display: flex; flex-direction: column; gap: 8px;
+            width: 280px; background: #2b2d31; padding: 60px 20px 20px;
+            display: flex; flex-direction: column; gap: 2px; align-items: flex-end;
         }
-        .sidebar-header { color: #80848e; font-size: 12px; margin-bottom: 5px; }
+        .sidebar-inner { width: 190px; display: flex; flex-direction: column; height: 100%; }
+        .sidebar-header { color: #80848e; font-size: 12px; margin-bottom: 8px; font-weight: bold; text-transform: uppercase; padding-left: 10px; }
         .settings-tab {
             padding: 10px 12px; border-radius: 4px; color: #b5bac1; cursor: pointer;
             font-weight: 500; transition: 0.2s;
@@ -28,22 +28,40 @@
         .settings-tab:hover { background: #35373c; color: #dbdee1; }
         .settings-tab.active { background: #404249; color: #fff; }
 
-/* The Bottom Left Back Button */
+        /* The Bottom Left Back Button (Updated to Standard Gray) */
         .settings-back-btn {
-            padding: 10px 12px; border-radius: 4px; color: #f23f43; cursor: pointer;
-            font-weight: bold; transition: 0.2s; margin-top: auto;
+            padding: 10px 12px; border-radius: 4px; color: #b5bac1; cursor: pointer;
+            font-weight: bold; transition: 0.2s; margin-top: auto; margin-bottom: 40px;
+            display: flex; align-items: center; gap: 8px;
         }
-        .settings-back-btn:hover { background: rgba(242, 63, 67, 0.1); }
+        .settings-back-btn:hover { background: #35373c; color: #dbdee1; }
 
-        .settings-content { flex-grow: 1; padding: 40px; background: #313338; overflow-y: auto; }
+        .settings-content { flex-grow: 1; padding: 60px 40px; background: #313338; overflow-y: auto; }
         .settings-content h2 { color: #fff; margin-top: 0; margin-bottom: 20px; font-size: 24px; }
-        .profile-edit-card { background: #1e1f22; padding: 20px; border-radius: 8px; display: flex; flex-direction: column; gap: 15px;}
+
+        /* PROFILE CARD (Refined for Banner + Overlapping Avatar) */
+        .profile-edit-card { background: #1e1f22; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; max-width: 660px; margin-bottom: 20px; }
+        .profile-banner-preview { height: 100px; background: #454545; }
+        .profile-header-row { padding: 0 16px; display: flex; align-items: flex-end; margin-top: -45px; margin-bottom: 16px; }
+        .editable-avatar {
+            width: 80px; height: 80px; border-radius: 50%; border: 6px solid #1e1f22; 
+            background: #111214; cursor: pointer; position: relative; overflow: hidden;
+        }
+        .editable-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .avatar-overlay {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.5); color: white;
+            font-size: 10px; font-weight: bold; display: flex; align-items: center; justify-content: center;
+            opacity: 0; transition: 0.2s;
+        }
+        .editable-avatar:hover .avatar-overlay { opacity: 1; }
+        .profile-body-inner { background: #2b2d31; margin: 0 16px 16px; padding: 16px; border-radius: 8px; display: flex; flex-direction: column; gap: 15px; }
+
         .input-group label { display: block; color: #b5bac1; font-size: 12px; font-weight: bold; margin-bottom: 8px;}
-        .settings-input { width: 100%; padding: 10px; border-radius: 4px; border: none; background: #1e1f22; color: #fff; font-size: 16px; border: 1px solid #111214;}
+        .settings-input { width: 100%; padding: 10px; border-radius: 4px; border: none; background: #1e1f22; color: #fff; font-size: 16px; border: 1px solid #111214; box-sizing: border-box;}
         .settings-input:focus { outline: 1px solid #5865f2; }
 
-/* Specific Button Widths */
-        .account-actions { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+        /* Specific Button Widths */
+        .account-actions { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; max-width: 660px; }
         .settings-btn { padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s;}
         .default-btn { background: #4e5058; }
         .default-btn:hover { background: #6d6f78; }
@@ -52,31 +70,35 @@
         .log-out-btn { width: 50%; } /* Exactly half width */
         .full-width { width: 100%; }
 
-/* Theme Styles */
+        /* Theme Styles */
         .nitro-banner { background: linear-gradient(90deg, #ff73fa, #5865f2); padding: 15px; border-radius: 8px; color: white; margin-bottom: 20px; }
         .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .theme-btn { padding: 15px; background: #2b2d31; border: 2px solid transparent; border-radius: 8px; color: #fff; cursor: pointer; font-weight: bold; }
         .theme-btn:hover { border-color: #5865f2; }
+        .theme-btn.selected { border-color: #5865f2; background: #404249; }
 
-/* ==== DYNAMIC THEME CSS VARIABLES ==== */
+        /* ==== DYNAMIC THEME CSS VARIABLES ==== */
         body[class*="theme-"] .server-bar { background: var(--bg-tertiary); }
         body[class*="theme-"] .channel-bar { background: var(--bg-secondary); }
         body[class*="theme-"] { background-color: var(--bg-primary); color: var(--text-normal); }
+        body[class*="theme-"] .chat-area, 
+        body[class*="theme-"] .settings-container, 
+        body[class*="theme-"] .settings-content { background-color: var(--bg-primary) !important; }
         body[class*="theme-"] .chat-input { background: var(--bg-secondary); color: var(--text-normal); }
         body[class*="theme-"] .user-bar { background: var(--bg-tertiary); }
 
-/* Theme Definitions */
-/* Beige */
+        /* Theme Definitions */
+        /* Beige */
         body.theme-beige.mode-dark { --bg-primary: #5c554b; --bg-secondary: #4a443c; --bg-tertiary: #38332d; --text-normal: #eee; }
         body.theme-beige.mode-light { --bg-primary: #f5f5dc; --bg-secondary: #e8e8ce; --bg-tertiary: #dbdbc0; --text-normal: #333; }
-/* Nature */
+        /* Nature */
         body.theme-nature.mode-dark { --bg-primary: #1b3320; --bg-secondary: #142918; --bg-tertiary: #0e1c10; --text-normal: #e8f5e9; }
         body.theme-nature.mode-light { --bg-primary: #e8f5e9; --bg-secondary: #c8e6c9; --bg-tertiary: #a5d6a7; --text-normal: #1b5e20; }
-/* Lava */
+        /* Lava */
         body.theme-lava.mode-dark { --bg-primary: #3b1c1c; --bg-secondary: #2b1414; --bg-tertiary: #1f0f0f; --text-normal: #ffcdd2; }
         body.theme-lava.mode-light { --bg-primary: #ffebee; --bg-secondary: #ffcdd2; --bg-tertiary: #ef9a9a; --text-normal: #b71c1c; }
 
-/* Nitro Tag Styles */
+        /* Nitro Tag Styles */
         .nitro-tag {
             background: linear-gradient(90deg, #ff73fa, #00a8fc);
             color: white;
@@ -401,6 +423,91 @@
     let myUsername = localStorage.getItem('primeUsername');
     let myAvatar = localStorage.getItem('primeAvatar');
     let isSignUpMode = false;
+
+    // Add these to your existing JS
+
+    let tempSelectedTheme = currentTheme;
+    let tempPfpBase64 = null;
+
+    function openSettings() {
+        document.getElementById('settings-modal').style.display = 'flex';
+        document.getElementById('user-dropup').style.display = 'none';
+    
+    // Fill in current data
+        document.getElementById('edit-username').value = myUsername || 'Unknown';
+        document.getElementById('settings-username-display').innerText = myUsername || 'Unknown';
+        document.getElementById('settings-pfp-preview').src = myAvatar || 'https://via.placeholder.com/80';
+    
+        const upsell = document.getElementById('nitro-theme-upsell');
+        const controls = document.getElementById('theme-controls');
+    
+        if (window.myIsNitro) {
+            upsell.style.display = 'none'; 
+            controls.style.opacity = '1';
+            controls.style.pointerEvents = 'auto';
+        } else {
+            upsell.style.display = 'block'; 
+            controls.style.opacity = '0.4';
+            controls.style.pointerEvents = 'none'; 
+        }
+    }
+
+// Editable PFP Logic
+    function previewPfp(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('settings-pfp-preview').src = e.target.result;
+                tempPfpBase64 = e.target.result; // Store it temporarily until they hit Save
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    async function saveAccountSettings() {
+    // If they changed their PFP, save it to the database
+        if (tempPfpBase64) {
+            try {
+                const { error } = await db.from('Accounts')
+                    .update({ avatar_base64: tempPfpBase64 })
+                    .eq('id', myUUID);
+            
+                if (error) throw error;
+            
+            // Update local cache
+                localStorage.setItem('primeAvatar', tempPfpBase64);
+                myAvatar = tempPfpBase64;
+                alert("Profile Picture Updated!");
+            } catch (err) {
+                console.error("Failed to update PFP:", err);
+                alert("Error updating profile.");
+            }
+        } else {
+            alert("No changes made.");
+        }
+    }
+
+// Theme Engine Logic (With Update Button)
+    function selectTheme(themeName) {
+        tempSelectedTheme = themeName;
+    // Highlight the selected button visually
+        document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('selected'));
+        event.target.classList.add('selected');
+    }
+
+    function saveThemeSettings() {
+        const modeSelect = document.getElementById('mode-select').value;
+    
+        currentTheme = tempSelectedTheme;
+        currentMode = modeSelect;
+    
+        localStorage.setItem('prime_theme', currentTheme);
+        localStorage.setItem('prime_mode', currentMode);
+    
+        applyThemeClasses();
+        alert("Appearance Updated!");
+    }
 
     // --- CORE LOGIC ---
     function isAdmin(username, id = null) {
@@ -986,66 +1093,92 @@
 
     initApp();
 </script>
-<div id="settings-modal" class="modal-overlay" style="display:none;">
-    <div class="settings-container">
-        <div class="settings-sidebar">
+<div id="settings-modal" class="settings-fullscreen" style="display:none;">
+    
+    <div class="settings-sidebar">
+        <div class="sidebar-inner">
             <h3 class="sidebar-header">USER SETTINGS</h3>
             <div class="settings-tab active" id="tab-account" onclick="switchSettingsTab('account')">My Account</div>
             <div class="settings-tab" id="tab-themes" onclick="switchSettingsTab('themes')">Appearance</div>
             
-            <div style="flex-grow: 1;"></div>
+            <div class="sidebar-divider"></div>
             
-            <div class="settings-back-btn" onclick="closeSettings()">
+            <div class="settings-tab" onclick="closeSettings()">
                 ⬅ Back to Chat
             </div>
         </div>
+    </div>
 
-        <div class="settings-content" id="settings-account" style="display:block;">
-            <h2>My Account</h2>
+    <div class="settings-content-area">
+        <div class="content-inner">
             
-            <div class="profile-edit-card">
-                <div class="input-group">
-                    <label>USERNAME</label>
-                    <input type="text" id="edit-username" class="settings-input" disabled>
-                </div>
-                <div class="input-group">
-                    <label>NEW PASSWORD</label>
-                    <input type="password" id="edit-password" class="settings-input" placeholder="Enter new password">
-                </div>
+            <div class="settings-content" id="settings-account" style="display:block;">
+                <h2>My Account</h2>
                 
+                <div class="profile-card">
+                    <div class="profile-banner"></div>
+                    <div class="profile-header">
+                        <div class="avatar-wrapper" onclick="document.getElementById('pfp-upload').click()">
+                            <img src="https://via.placeholder.com/80" id="settings-pfp-preview" class="profile-avatar">
+                            <div class="avatar-edit-overlay">EDIT</div>
+                        </div>
+                        <div class="profile-info">
+                            <h3 id="settings-username-display">Username</h3>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-body">
+                        <div class="input-group">
+                            <label>USERNAME</label>
+                            <input type="text" id="edit-username" class="settings-input" disabled>
+                        </div>
+                        <div class="input-group">
+                            <label>NEW PASSWORD</label>
+                            <input type="password" id="edit-password" class="settings-input" placeholder="Enter new password">
+                        </div>
+                        
+                        <input type="file" id="pfp-upload" style="display:none" accept="image/*" onchange="previewPfp(event)">
+                        
+                        <button class="settings-btn brand-btn" onclick="saveAccountSettings()">Save Account Changes</button>
+                    </div>
+                </div>
+
                 <div class="account-actions">
                     <button class="settings-btn default-btn log-out-btn" onclick="logOut()">Log Out</button>
                     <button class="settings-btn danger-btn full-width" onclick="deleteAccountAlert()">Delete Account</button>
                 </div>
             </div>
-        </div>
 
-        <div class="settings-content" id="settings-themes" style="display:none;">
-            <h2>Appearance</h2>
-            
-            <div id="nitro-theme-upsell" class="nitro-banner">
-                🚀 <strong>Nitro Users Only!</strong> Subscribe to unlock custom themes.
-            </div>
-
-            <div id="theme-controls">
-                <div class="input-group">
-                    <label>COLOR SCHEME</label>
-                    <select id="mode-select" class="settings-input" onchange="setMode(this.value)">
-                        <option value="dark">Dark Mode</option>
-                        <option value="light">Light Mode</option>
-                    </select>
+            <div class="settings-content" id="settings-themes" style="display:none;">
+                <h2>Appearance</h2>
+                
+                <div id="nitro-theme-upsell" class="nitro-banner">
+                    🚀 <strong>Nitro Users Only!</strong> Subscribe to unlock custom themes.
                 </div>
 
-                <div class="input-group">
-                    <label>THEME</label>
-                    <div class="theme-grid">
-                        <button class="theme-btn" onclick="setTheme('default')">Default Gray</button>
-                        <button class="theme-btn" onclick="setTheme('beige')">Beige</button>
-                        <button class="theme-btn" onclick="setTheme('nature')">Nature</button>
-                        <button class="theme-btn" onclick="setTheme('lava')">Lava</button>
+                <div id="theme-controls">
+                    <div class="input-group">
+                        <label>COLOR SCHEME</label>
+                        <select id="mode-select" class="settings-input">
+                            <option value="dark">Dark Mode</option>
+                            <option value="light">Light Mode</option>
+                        </select>
                     </div>
+
+                    <div class="input-group">
+                        <label>THEME</label>
+                        <div class="theme-grid">
+                            <button class="theme-btn" onclick="selectTheme('default')">Default Gray</button>
+                            <button class="theme-btn" onclick="selectTheme('beige')">Beige</button>
+                            <button class="theme-btn" onclick="selectTheme('nature')">Nature</button>
+                            <button class="theme-btn" onclick="selectTheme('lava')">Lava</button>
+                        </div>
+                    </div>
+                    
+                    <button class="settings-btn brand-btn" style="margin-top: 20px;" onclick="saveThemeSettings()">Update Theme</button>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
