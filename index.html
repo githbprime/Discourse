@@ -5,6 +5,77 @@
     <title>Discourse | Prime Server</title>
     <style>
 
+        /* SETTINGS MODAL STYLES */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.7); z-index: 9999;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .settings-container {
+            width: 800px; height: 600px; max-width: 95%; max-height: 95%;
+            background: #313338; border-radius: 8px; display: flex; overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .settings-sidebar {
+            width: 250px; background: #2b2d31; padding: 20px;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .sidebar-header { color: #80848e; font-size: 12px; margin-bottom: 5px; }
+        .settings-tab {
+            padding: 10px 12px; border-radius: 4px; color: #b5bac1; cursor: pointer;
+            font-weight: 500; transition: 0.2s;
+        }
+        .settings-tab:hover { background: #35373c; color: #dbdee1; }
+        .settings-tab.active { background: #404249; color: #fff; }
+
+/* The Bottom Left Back Button */
+        .settings-back-btn {
+            padding: 10px 12px; border-radius: 4px; color: #f23f43; cursor: pointer;
+            font-weight: bold; transition: 0.2s; margin-top: auto;
+        }
+        .settings-back-btn:hover { background: rgba(242, 63, 67, 0.1); }
+
+        .settings-content { flex-grow: 1; padding: 40px; background: #313338; overflow-y: auto; }
+        .settings-content h2 { color: #fff; margin-top: 0; margin-bottom: 20px; font-size: 24px; }
+        .profile-edit-card { background: #1e1f22; padding: 20px; border-radius: 8px; display: flex; flex-direction: column; gap: 15px;}
+        .input-group label { display: block; color: #b5bac1; font-size: 12px; font-weight: bold; margin-bottom: 8px;}
+        .settings-input { width: 100%; padding: 10px; border-radius: 4px; border: none; background: #1e1f22; color: #fff; font-size: 16px; border: 1px solid #111214;}
+        .settings-input:focus { outline: 1px solid #5865f2; }
+
+/* Specific Button Widths */
+        .account-actions { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+        .settings-btn { padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s;}
+        .default-btn { background: #4e5058; }
+        .default-btn:hover { background: #6d6f78; }
+        .danger-btn { background: transparent; border: 1px solid #f23f43; color: #f23f43; }
+        .danger-btn:hover { background: #f23f43; color: white; }
+        .log-out-btn { width: 50%; } /* Exactly half width */
+        .full-width { width: 100%; }
+
+/* Theme Styles */
+        .nitro-banner { background: linear-gradient(90deg, #ff73fa, #5865f2); padding: 15px; border-radius: 8px; color: white; margin-bottom: 20px; }
+        .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .theme-btn { padding: 15px; background: #2b2d31; border: 2px solid transparent; border-radius: 8px; color: #fff; cursor: pointer; font-weight: bold; }
+        .theme-btn:hover { border-color: #5865f2; }
+
+/* ==== DYNAMIC THEME CSS VARIABLES ==== */
+        body[class*="theme-"] .server-bar { background: var(--bg-tertiary); }
+        body[class*="theme-"] .channel-bar { background: var(--bg-secondary); }
+        body[class*="theme-"] { background-color: var(--bg-primary); color: var(--text-normal); }
+        body[class*="theme-"] .chat-input { background: var(--bg-secondary); color: var(--text-normal); }
+        body[class*="theme-"] .user-bar { background: var(--bg-tertiary); }
+
+/* Theme Definitions */
+/* Beige */
+        body.theme-beige.mode-dark { --bg-primary: #5c554b; --bg-secondary: #4a443c; --bg-tertiary: #38332d; --text-normal: #eee; }
+        body.theme-beige.mode-light { --bg-primary: #f5f5dc; --bg-secondary: #e8e8ce; --bg-tertiary: #dbdbc0; --text-normal: #333; }
+/* Nature */
+        body.theme-nature.mode-dark { --bg-primary: #1b3320; --bg-secondary: #142918; --bg-tertiary: #0e1c10; --text-normal: #e8f5e9; }
+        body.theme-nature.mode-light { --bg-primary: #e8f5e9; --bg-secondary: #c8e6c9; --bg-tertiary: #a5d6a7; --text-normal: #1b5e20; }
+/* Lava */
+        body.theme-lava.mode-dark { --bg-primary: #3b1c1c; --bg-secondary: #2b1414; --bg-tertiary: #1f0f0f; --text-normal: #ffcdd2; }
+        body.theme-lava.mode-light { --bg-primary: #ffebee; --bg-secondary: #ffcdd2; --bg-tertiary: #ef9a9a; --text-normal: #b71c1c; }
+
 /* Nitro Tag Styles */
         .nitro-tag {
             background: linear-gradient(90deg, #ff73fa, #00a8fc);
@@ -260,19 +331,12 @@
             <div class="channel-item active" data-channel="welcome">welcome</div>
             <div class="channel-item" data-channel="general">general</div>
             <div class="channel-item" data-channel="feedback">feedback</div>
+            <div class="channel-item" data-channel="support">support</div>
         </div>
         <div id="user-dropup" class="user-dropup">
             <div class="dropup-item" onclick="alert('Settings Coming Soon!')">
                 <img src="https://img.icons8.com/ios-filled/50/ffffff/settings.png" class="dropup-icon">
                 <span>Settings</span>
-            </div>
-            <div class="dropup-item" onclick="openMyProfile(event)">
-                <img src="https://img.icons8.com/ios-glyphs/30/ffffff/user-male-circle.png" class="dropup-icon">
-                <span>Edit Profile</span>
-            </div>
-            <div class="dropup-divider"></div>
-            <div class="dropup-item" style="color: #f23f42;" onclick="logout()">
-                <span>Log Out</span>
             </div>
         </div>
 
@@ -359,10 +423,95 @@
         if(menu) menu.style.display = 'none';
     };
 
-    function logout() {
-        localStorage.clear();
-        location.reload();
+    // --- SETTINGS UI LOGIC ---
+    function openSettings() {
+        document.getElementById('settings-modal').style.display = 'flex';
+        document.getElementById('user-dropup').style.display = 'none'; // Close dropup
+    
+        // Fill in current username
+        if(document.getElementById('edit-username')) {
+            document.getElementById('edit-username').value = myUsername || 'Unknown';
+        }
+
+        // Nitro Upsell Check
+        const upsell = document.getElementById('nitro-theme-upsell');
+        const controls = document.getElementById('theme-controls');
+    
+        // FIX: Changed isNitro to window.myIsNitro
+        if (window.myIsNitro) {
+            upsell.style.display = 'none'; // Hide banner if they HAVE Nitro
+            controls.style.opacity = '1';
+            controls.style.pointerEvents = 'auto';
+        } else {
+            upsell.style.display = 'block'; // Show banner if they DON'T have Nitro
+            controls.style.opacity = '0.4';
+            controls.style.pointerEvents = 'none'; // Prevent clicking
+        }
     }
+
+    function closeSettings() {
+        document.getElementById('settings-modal').style.display = 'none';
+    }
+
+    function switchSettingsTab(tabName) {
+        // Hide all contents
+        document.getElementById('settings-account').style.display = 'none';
+        document.getElementById('settings-themes').style.display = 'none';
+    
+        // Remove active state from all tabs
+        document.getElementById('tab-account').classList.remove('active');
+        document.getElementById('tab-themes').classList.remove('active');
+    
+        // Show selected
+        document.getElementById(`settings-${tabName}`).style.display = 'block';
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+    }
+
+    // --- ACCOUNT ACTIONS ---
+    // FIX: Combined duplicate logout functions into one
+    function logOut() {
+        localStorage.clear(); // Clears primeUUID, primeUsername, etc.
+        window.location.reload(); 
+    }
+
+    function deleteAccountAlert() {
+        alert("This feature is under construction. For assistance, please contact #support");
+    }
+
+    // --- THEME ENGINE ---
+    // Pull saved preferences from cache, or use defaults
+    let currentTheme = localStorage.getItem('prime_theme') || 'default';
+    let currentMode = localStorage.getItem('prime_mode') || 'dark';
+
+    function applyThemeClasses() {
+        // Remove old theme classes
+        document.body.className = document.body.className.replace(/theme-\w+/g, '').replace(/mode-\w+/g, '');
+    
+        // If not default, apply the specific theme variables
+        if (currentTheme !== 'default') {
+            document.body.classList.add(`theme-${currentTheme}`);
+            document.body.classList.add(`mode-${currentMode}`);
+        }
+    }
+
+    function setTheme(themeName) {
+        currentTheme = themeName;
+        localStorage.setItem('prime_theme', themeName); // Save to cache
+        applyThemeClasses();
+    }
+
+    function setMode(modeType) {
+        currentMode = modeType;
+        localStorage.setItem('prime_mode', modeType); // Save to cache
+        applyThemeClasses();
+    }
+
+    // Ensure dropdown selector matches cached mode on load
+    document.addEventListener('DOMContentLoaded', () => {
+        applyThemeClasses();
+        const modeSelect = document.getElementById('mode-select');
+        if (modeSelect) modeSelect.value = currentMode;
+    });
 
     async function refreshMemberLists(presenceState) {
         const { data: allAccounts, error } = await db.from('Accounts').select('*');
@@ -837,5 +986,68 @@
 
     initApp();
 </script>
+<div id="settings-modal" class="modal-overlay" style="display:none;">
+    <div class="settings-container">
+        <div class="settings-sidebar">
+            <h3 class="sidebar-header">USER SETTINGS</h3>
+            <div class="settings-tab active" id="tab-account" onclick="switchSettingsTab('account')">My Account</div>
+            <div class="settings-tab" id="tab-themes" onclick="switchSettingsTab('themes')">Appearance</div>
+            
+            <div style="flex-grow: 1;"></div>
+            
+            <div class="settings-back-btn" onclick="closeSettings()">
+                ⬅ Back to Chat
+            </div>
+        </div>
+
+        <div class="settings-content" id="settings-account" style="display:block;">
+            <h2>My Account</h2>
+            
+            <div class="profile-edit-card">
+                <div class="input-group">
+                    <label>USERNAME</label>
+                    <input type="text" id="edit-username" class="settings-input" disabled>
+                </div>
+                <div class="input-group">
+                    <label>NEW PASSWORD</label>
+                    <input type="password" id="edit-password" class="settings-input" placeholder="Enter new password">
+                </div>
+                
+                <div class="account-actions">
+                    <button class="settings-btn default-btn log-out-btn" onclick="logOut()">Log Out</button>
+                    <button class="settings-btn danger-btn full-width" onclick="deleteAccountAlert()">Delete Account</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-content" id="settings-themes" style="display:none;">
+            <h2>Appearance</h2>
+            
+            <div id="nitro-theme-upsell" class="nitro-banner">
+                🚀 <strong>Nitro Users Only!</strong> Subscribe to unlock custom themes.
+            </div>
+
+            <div id="theme-controls">
+                <div class="input-group">
+                    <label>COLOR SCHEME</label>
+                    <select id="mode-select" class="settings-input" onchange="setMode(this.value)">
+                        <option value="dark">Dark Mode</option>
+                        <option value="light">Light Mode</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>THEME</label>
+                    <div class="theme-grid">
+                        <button class="theme-btn" onclick="setTheme('default')">Default Gray</button>
+                        <button class="theme-btn" onclick="setTheme('beige')">Beige</button>
+                        <button class="theme-btn" onclick="setTheme('nature')">Nature</button>
+                        <button class="theme-btn" onclick="setTheme('lava')">Lava</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>
