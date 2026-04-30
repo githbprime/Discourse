@@ -161,6 +161,7 @@
     <div class="mini-profile-body">
         <div style="font-size: 20px; font-weight: bold;" id="mp-name"></div>
         <div style="font-size: 14px; color: #b5bac1;" id="mp-hash"></div>
+        <button id="mp-logout-btn" style="display:none; margin-top:12px; background:#f23f42; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer; font-weight:bold;">Log Out</button>
     </div>
 </div>
 
@@ -201,11 +202,11 @@
             <div class="channel-item" data-channel="general">general</div>
             <div class="channel-item" data-channel="feedback">feedback</div>
         </div>
-        <div class="user-panel" onclick="openModal(true)">
+        <div class="user-panel" onclick="showMiniProfile(event, myUsername, true)">
             <img id="my-pfp" class="user-avatar">
             <div class="user-info">
                 <div class="user-name" id="my-name">Guest</div>
-                <div class="user-hash" id="my-hash">#0000</div>
+                <div class="user-hash" id="my-hash">MEMBER</div>
             </div>
         </div>
     </div>
@@ -269,87 +270,89 @@
     function getPfp(user) { return livePfps[user] || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${user}`; }
     function getUserClass(user) { return `avatar-${user.replace('#', '-')}`; }
 
-    async function refreshMemberLists(presenceState) {
-        const onlineUsernames = Object.keys(presenceState);
+async function refreshMemberLists(presenceState) {
+        // 1. Get all registered accounts from the database
+        const { data: allAccounts, error } = await db.from('Accounts').select('*');
+        if (error) return console.error("Error fetching members:", error);
+
+        const onlineUUIDs = Object.keys(presenceState);
         const onlineList = document.getElementById('member-list-online');
         const offlineList = document.getElementById('member-list-offline');
         
+        // Clear lists before rebuilding
         onlineList.innerHTML = '';
-        onlineUsernames.forEach(userKey => {
-            const userPfp = presenceState[userKey][0].pfp || getPfp(userKey);
-            livePfps[userKey] = userPfp;
+        offlineList.innerHTML = '';
+        
+        let onlineCount = 0;
+        let offlineCount = 0;
 
-            document.querySelectorAll(`.${getUserClass(userKey)}`).forEach(img => {
-                if (img.src !== userPfp) img.src = userPfp;
-            });
-
-            const isAdm = isAdmin(userKey);
-            onlineList.innerHTML += `
-                <div class="member-item" onclick="showMiniProfile(event, '${userKey}')">
-                    <div class="member-avatar-wrapper">
-                        <img src="${userPfp}" class="${getUserClass(userKey)}">
-                        <div class="status-dot"></div>
-                    </div>
-                    <span style="color:${isAdm?'#ffcc00':'#dbdee1'}">${userKey.split('#')[0]}${isAdm?' 👑':''}</span>
-                </div>`;
-        });
-        document.getElementById('online-count').innerText = onlineUsernames.length;
-
-        try {
-            const { data: allUsers } = await db.from('Users').select('*');
-            const { data: msgHistory } = await db.from('Messages').select('username');
-
-            const bank = new Map();
-            // Prioritize the Users table because it has the real avatar_urls
-            if (allUsers) {
-                allUsers.forEach(u => {
-                    if (u.username) bank.set(u.username, u.avatar_url);
-                });
-            }
+        // 2. Iterate through every account in your database
+        allAccounts.forEach(account => {
+            const isOnline = onlineUUIDs.includes(account.id);
+            const isAdm = account.username === 'Prime'; // Or your admin logic
+            const isNitro = account.is_nitro || false;
             
-            // Backfill from messages only if they aren't in the Users table
-            if (msgHistory) {
-                msgHistory.forEach(m => {
-                    if (m.username && !bank.has(m.username)) {
-                        bank.set(m.username, `https://api.dicebear.com/7.x/pixel-art/svg?seed=${m.username}`);
-                    }
-                });
-            }
+            // Map the UUID to the Avatar so the chat can use it instantly
+            livePfps[account.username] = account.avatar_url;
 
-            offlineList.innerHTML = '';
-            let offlineCount = 0;
-            bank.forEach((avatar, username) => {
-                if (!onlineUsernames.includes(username)) {
-                    const isAdm = isAdmin(username);
-                    // Use the avatar from the bank
-                    offlineList.innerHTML += `
-                        <div class="member-item offline" onclick="showMiniProfile(event, '${username}')">
-                            <div class="member-avatar-wrapper">
-                                <img src="${avatar}" class="${getUserClass(username)}" style="filter: grayscale(100%); opacity: 0.6;">
-                                <div class="status-dot offline"></div>
-                            </div>
-                            <span style="color:${isAdm?'#a89020':'#747f8d'}">${username.split('#')[0]}${isAdm?' 👑':''}</span>
-                        </div>`;
-                    offlineCount++;
-                }
+            // Sync pfps in the chat area for this user
+            document.querySelectorAll(`.avatar-${account.id}`).forEach(img => {
+                if (img.src !== account.avatar_url) img.src = account.avatar_url;
             });
-            document.getElementById('offline-count').innerText = offlineCount;
-        } catch (e) {
-            console.warn("Offline list sync pending...");
-        }
+
+            // Create the HTML for the member item
+            const memberHTML = `
+                <div class="member-item ${isOnline ? '' : 'offline'}" onclick="showMiniProfile(event, '${account.username}')">
+                    <div class="member-avatar-wrapper">
+                        <img src="${account.avatar_url}" class="msg-pfp avatar-${account.id}">
+                        ${isOnline ? '<div class="status-dot"></div>' : ''}
+                    </div>
+                    <span style="color:${isNitro ? '#00a8fc' : (isAdm ? '#ffcc00' : '#dbdee1')}">
+                        ${account.username}${isAdm ? ' 👑' : ''}
+                    </span>
+                </div>`;
+
+            // 3. Sort into the correct list
+            if (isOnline) {
+                onlineList.innerHTML += memberHTML;
+                onlineCount++;
+            } else {
+                offlineList.innerHTML += memberHTML;
+                offlineCount++;
+            }
+        });
+
+        // Update the counts in the UI
+        document.getElementById('online-count').innerText = onlineCount;
+        document.getElementById('offline-count').innerText = offlineCount;
     }
 
     // --- UI & UTILS ---
     function openLightbox(src) { document.getElementById('lightbox-img').src = src; document.getElementById('lightbox').style.display = 'flex'; }
     function closeMiniProfile() { document.getElementById('mp-overlay').style.display = 'none'; document.getElementById('mp-card').style.display = 'none'; }
-    function showMiniProfile(event, username) {
+    function showMiniProfile(event, username, isSelf = false) {
         const card = document.getElementById('mp-card');
         const overlay = document.getElementById('mp-overlay');
         const isAdm = isAdmin(username);
-        const parts = username.split('#');
+        
         document.getElementById('mp-pfp').src = getPfp(username);
-        document.getElementById('mp-name').innerHTML = `<span style="color:${isAdm?'#ffcc00':'white'}">${parts[0]}${isAdm?' 👑':''}</span>`;
-        document.getElementById('mp-hash').innerText = '#' + (parts[1] || '0000');
+        // Removed the .split('#') logic since tags are gone
+        document.getElementById('mp-name').innerHTML = `<span style="color:${isAdm?'#ffcc00':'white'}">${username}${isAdm?' 👑':''}</span>`;
+        // Removed the #0000, replaced with Member/Admin
+        document.getElementById('mp-hash').innerText = isAdm ? 'ADMIN' : 'MEMBER';
+
+        // Handle the new Logout logic
+        const logoutBtn = document.getElementById('mp-logout-btn');
+        if (isSelf) {
+            logoutBtn.style.display = 'block';
+            logoutBtn.onclick = () => {
+                localStorage.clear(); // Wipes the session completely
+                location.reload();    // Reloads to show the login screen
+            };
+        } else {
+            logoutBtn.style.display = 'none';
+        }
+
         let top = event.clientY - 100, left = event.clientX - 320; 
         if (top < 10) top = 10;
         card.style.top = top + 'px'; card.style.left = left + 'px';
