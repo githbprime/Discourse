@@ -79,10 +79,12 @@
 
         .input-group label { display: block; color: var(--text-muted); font-size: 12px; font-weight: bold; margin-bottom: 8px;}
         .settings-input { width: 100%; padding: 10px; border-radius: 4px; border: none; background: var(--input-bg); color: var(--text-normal); font-size: 16px; border: 1px solid var(--bg-tertiary); box-sizing: border-box;}
+        .settings-input:focus { outline: 1px solid var(--brand); }
 
         .account-actions { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; max-width: 660px; }
         .settings-btn { padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; text-align: center; }
         .brand-btn { background: var(--brand); }
+        .brand-btn:hover { filter: brightness(1.2); }
         .danger-btn { background: #f23f43; }
         .danger-btn:hover { background: #d83c3e; }
         .full-width { width: 100%; }
@@ -94,7 +96,8 @@
             border-radius: 8px; color: var(--text-normal); cursor: pointer; font-weight: bold; 
             display: flex; align-items: center; gap: 16px; transition: 0.2s;
         }
-        .theme-btn.selected { border-color: var(--brand); background: var(--bg-tertiary); }
+        .theme-btn:hover { border-color: var(--brand); background: var(--card-bg); }
+        .theme-btn.selected { border-color: var(--brand); background: var(--card-bg); }
         .theme-preview-circle { width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.1); }
 
         .nitro-banner { background: linear-gradient(90deg, #ff73fa, #5865f2); padding: 15px; border-radius: 8px; color: white; margin-bottom: 20px; }
@@ -112,22 +115,28 @@
         
         /* SIDEBARS */
         .server-bar { width: 72px; background: var(--bg-tertiary); display: flex; flex-direction: column; align-items: center; padding-top: 12px; gap: 8px; flex-shrink: 0; }
-        .server-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--bg-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; overflow: hidden; color: var(--text-normal); font-weight: bold; font-size: 18px; }
+        .server-icon { position: relative; width: 48px; height: 48px; border-radius: 50%; background: var(--bg-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; overflow: visible; color: var(--text-normal); font-weight: bold; font-size: 18px; }
         .server-icon:hover, .server-icon.active { border-radius: 15px; background: var(--brand); color: white; }
-        .server-icon img { width: 28px; height: 28px; filter: brightness(0) invert(1); }
+        .server-icon img { width: 28px; height: 28px; filter: brightness(0) invert(1); border-radius: 50%; }
 
-        /* The channel bar MUST be relative so the dropup can position over the user panel perfectly */
+        /* UNREAD DM BADGE */
+        .dm-unread-badge { display: none; position: absolute; top: -2px; right: -2px; width: 14px; height: 14px; background: #f0b232; border-radius: 50%; border: 3px solid var(--bg-tertiary); z-index: 10; }
+
+        /* The channel bar MUST be relative so the dropup can position correctly */
         .channel-bar { width: 240px; background: var(--bg-secondary); display: flex; flex-direction: column; flex-shrink: 0; position: relative; }
-        .channel-header { padding: 16px; font-weight: bold; color: var(--text-normal); border-bottom: 1px solid rgba(0,0,0,0.1); }
+        .sidebar-view { display: flex; flex-direction: column; flex-grow: 1; min-height: 0; }
+        
+        .channel-header { padding: 16px; font-weight: bold; color: var(--text-normal); border-bottom: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
         .channel-list { padding: 8px; flex-grow: 1; overflow-y: auto; }
         .channel-item { padding: 8px 12px; border-radius: 4px; color: var(--text-muted); cursor: pointer; margin-bottom: 2px; display: flex; align-items: center; }
         .channel-item:hover { background: var(--bg-primary); color: var(--text-normal); }
         .channel-item.active { background: var(--bg-tertiary); color: var(--text-normal); }
         .channel-item.dm-item { gap: 12px; }
         .dm-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-tertiary); object-fit: cover; }
+        .dm-unread-dot { width: 8px; height: 8px; background: #f0b232; border-radius: 50%; margin-left: auto; }
 
         /* USER PANEL & DROPUP */
-        .user-panel { background: var(--bg-tertiary); padding: 8px; display: flex; align-items: center; gap: 10px; cursor: pointer; border-top: 1px solid rgba(0,0,0,0.05); }
+        .user-panel { background: var(--bg-tertiary); padding: 8px; display: flex; align-items: center; gap: 10px; cursor: pointer; border-top: 1px solid rgba(0,0,0,0.05); margin-top: auto; flex-shrink: 0; }
         .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-secondary); object-fit: cover; }
         .user-info { display: flex; flex-direction: column; min-width: 0; }
         .user-name { font-size: 13px; font-weight: bold; color: var(--text-normal); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -144,11 +153,10 @@
         .dropup-icon { width: 18px; height: 18px; filter: brightness(0) invert(1); }
         body.mode-light .dropup-icon { filter: brightness(0) invert(0.3); }
 
-        /* CHAT AREA (FULLY RESTORED) */
+        /* CHAT AREA */
         .chat-area { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg-primary); }
         .chat-messages { flex-grow: 1; overflow-y: auto; padding: 10px 0; }
         
-        /* MESSAGE BLOCK */
         .msg-row { display: flex; padding: 2px 16px; width: 100%; box-sizing: border-box; position: relative; flex-direction: column; }
         .msg-row:hover { background: rgba(0,0,0,0.02); }
         .msg-row.first { margin-top: 14px; }
@@ -158,7 +166,6 @@
         .msg-pfp { width: 40px; height: 40px; border-radius: 50%; margin-top: 4px; object-fit: cover; cursor: pointer; }
         .content-col { flex-grow: 1; min-width: 0; padding-left: 10px; }
         
-        /* ACTION BAR & REACTIONS */
         .msg-actions { position: absolute; right: 16px; top: -16px; background: var(--bg-primary); border: 1px solid var(--bg-tertiary); border-radius: 4px; display: none; z-index: 10; padding: 2px; }
         .msg-row:hover .msg-actions { display: flex; }
         .action-btn { padding: 4px 8px; cursor: pointer; color: var(--text-muted); font-size: 14px; border-radius: 4px; position: relative; }
@@ -178,7 +185,6 @@
         .rt-user { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-normal); }
         .rt-pfp { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; }
 
-        /* REPLIES & MEDIA */
         .reply-line { color: var(--text-muted); font-size: 13px; display: flex; align-items: center; margin-left: 20px; margin-bottom: 4px; opacity: 0.8; }
         .reply-line:before { content: ""; width: 30px; height: 10px; border-left: 2px solid var(--text-muted); border-top: 2px solid var(--text-muted); border-top-left-radius: 6px; margin-right: 6px; margin-top: 10px; }
 
@@ -209,7 +215,6 @@
         .member-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 4px; color: var(--text-muted); cursor: pointer; transition: 0.1s; }
         .member-item:hover { background: var(--bg-primary); color: var(--text-normal); } 
         
-        /* OFFLINE STYLES */
         .member-item.offline { opacity: 0.5; }
         .member-item.offline:hover { opacity: 1; }
         .member-avatar-wrapper { position: relative; width: 32px; height: 32px; flex-shrink: 0; }
@@ -244,6 +249,7 @@
     <div class="mini-profile-body">
         <div style="font-size: 20px; font-weight: bold;" id="mp-name"></div>
         <div style="font-size: 14px; color: var(--text-muted);" id="mp-hash"></div>
+        <button id="mp-message-btn" style="display:none; margin-top:12px; background:var(--brand); color:white; border:none; padding:8px; border-radius:4px; cursor:pointer; font-weight:bold;">Message</button>
         <button id="mp-logout-btn" style="display:none; margin-top:12px; background:#f23f42; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer; font-weight:bold;">Log Out</button>
     </div>
 </div>
@@ -277,9 +283,10 @@
 
 <div class="app-container">
     <div class="server-bar">
-        <!-- Direct Messages Icon -->
+        <!-- Direct Messages Icon (Now has the Unread Dot!) -->
         <div class="server-icon" id="icon-dm" onclick="switchView('dm')">
             <img src="https://img.icons8.com/ios-filled/50/ffffff/discord-logo.png" alt="DMs">
+            <div id="dm-unread-badge" class="dm-unread-badge"></div>
         </div>
         <div style="width: 32px; height: 2px; background: var(--bg-secondary); border-radius: 1px;"></div>
         <!-- Prime Server Icon -->
@@ -288,7 +295,7 @@
     
     <div class="channel-bar">
         <!-- Prime Server Sidebar -->
-        <div id="sidebar-prime">
+        <div id="sidebar-prime" class="sidebar-view">
             <div class="channel-header">Prime Server</div>
             <div class="channel-list">
                 <div class="channel-item active" data-channel="welcome"># welcome</div>
@@ -298,19 +305,18 @@
             </div>
         </div>
 
-        <!-- DM Sidebar (Phase 3 Prep) -->
-        <div id="sidebar-dm" style="display:none;">
+        <!-- DM Sidebar (Phase 3 Layout) -->
+        <div id="sidebar-dm" class="sidebar-view" style="display:none;">
             <div class="channel-header">Direct Messages</div>
             <div class="channel-list">
-                <div class="channel-item dm-item" data-channel="dm-friend">
-                    <img src="https://api.dicebear.com/7.x/pixel-art/svg?seed=Friend" class="dm-avatar">
-                    <span>Friend 1</span>
+                <!-- "Me" Private Channel that securely mirrors your tags! -->
+                <div class="channel-item dm-item" id="dm-me-item" onclick="openDMChannel('me')">
+                    <img src="" class="dm-avatar" id="dm-me-avatar">
+                    <span id="dm-me-name" style="font-weight:bold;">Loading...</span>
                 </div>
                 <div style="padding: 10px; color: var(--text-muted); font-size: 11px; font-weight: bold; text-transform: uppercase;">Direct Messages</div>
-                <div class="channel-item dm-item active" data-channel="dm-me">
-                    <img src="" class="dm-avatar" id="dm-me-avatar">
-                    <span>Me</span>
-                </div>
+                <!-- Dynamic DM List will populate right here! -->
+                <div id="dm-list-container"></div>
             </div>
         </div>
 
@@ -471,6 +477,7 @@
     let lastTime = 0;
     let timeoutInterval = null;
     let livePfps = {}; 
+    let tempDMs = []; // Holds unsaved DMs until you send a message
     window.myIsNitro = false;
 
     let myUUID = localStorage.getItem('primeUUID');
@@ -493,27 +500,70 @@
     
     function getPfp(user) { return livePfps[user] || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${user}`; }
     function getUserClass(user) { return `avatar-${user.replace('#', '-')}`; }
+    function getDMChannel(u1, u2) { return [u1, u2].sort().join('_'); }
 
     // --- VIEWS & NAVIGATION ---
     function switchView(view) {
         const isDM = (view === 'dm');
-        document.getElementById('sidebar-prime').style.display = isDM ? 'none' : 'block';
-        document.getElementById('sidebar-dm').style.display = isDM ? 'block' : 'none';
+        document.getElementById('sidebar-prime').style.display = isDM ? 'none' : 'flex';
+        document.getElementById('sidebar-dm').style.display = isDM ? 'flex' : 'none';
         document.getElementById('members-bar').style.display = isDM ? 'none' : 'block';
         document.getElementById('icon-dm').classList.toggle('active', isDM);
         document.getElementById('icon-prime').classList.toggle('active', !isDM);
         
-        document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
         if (isDM) {
-            document.querySelector('[data-channel="dm-me"]').classList.add('active');
-            currentChannel = `dm-${myUUID}`;
-            document.getElementById('chat-input').placeholder = `Message @Me`;
+            if (!currentChannel.startsWith('dm-')) {
+                openDMChannel('me');
+            }
+            loadDMList();
         } else {
-            document.querySelector('[data-channel="welcome"]').classList.add('active');
-            currentChannel = 'welcome';
-            document.getElementById('chat-input').placeholder = `Message #welcome`;
+            if (currentChannel.startsWith('dm-')) {
+                currentChannel = 'welcome';
+            }
+            document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
+            const primeItem = document.querySelector(`[data-channel="${currentChannel}"]`);
+            if (primeItem) primeItem.classList.add('active');
+            
+            document.getElementById('chat-input').placeholder = `Message #${currentChannel}`;
+            loadMessages();
         }
+    }
+
+    // Opens specific DM conversations
+    function openDMChannel(targetId, targetName = '') {
+        document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
+        
+        if (targetId === 'me') {
+            currentChannel = `dm-${myUUID}`;
+            document.getElementById('chat-input').placeholder = `Message @Me (Private notes)`;
+            document.getElementById('dm-me-item').classList.add('active');
+        } else {
+            currentChannel = getDMChannel(myUUID, targetId);
+            document.getElementById('chat-input').placeholder = `Message @${targetName}`;
+        }
+        
+        // Update Local Read State
+        localStorage.setItem(`read_${currentChannel}`, Date.now().toString());
         loadMessages();
+        loadDMList(); // Refreshes UI to clear unread dots
+    }
+
+    // Starts a DM from clicking "Message" on a profile card
+    function startDM(targetId, targetUsername, targetPfp) {
+        closeMiniProfile();
+        if (targetId === myUUID) {
+            switchView('dm');
+            openDMChannel('me');
+            return;
+        }
+        
+        // Temporarily add to our DM list if not already there
+        if (!tempDMs.find(u => u.id === targetId)) {
+            tempDMs.push({ id: targetId, username: targetUsername, pfp: targetPfp });
+        }
+        
+        switchView('dm');
+        openDMChannel(targetId, targetUsername);
     }
 
     function toggleUserMenu(event) {
@@ -550,12 +600,10 @@
             controls.style.pointerEvents = 'none'; 
         }
         
-        selectTheme(currentTheme); // Visually highlight the correct theme btn
+        selectTheme(currentTheme); 
     }
 
-    function closeSettings() {
-        document.getElementById('settings-modal').style.display = 'none';
-    }
+    function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
 
     function switchSettingsTab(tabName) {
         document.getElementById('settings-account').style.display = 'none';
@@ -651,14 +699,8 @@
         if (modeSelect) modeSelect.value = currentMode;
     });
 
-    function logOut() {
-        localStorage.clear(); 
-        window.location.reload(); 
-    }
-
-    function deleteAccountAlert() {
-        alert("This feature is under construction. For assistance, please contact #support");
-    }
+    function logOut() { localStorage.clear(); window.location.reload(); }
+    function deleteAccountAlert() { alert("This feature is under construction. For assistance, please contact #support"); }
 
     // --- TIMEOUTS ---
     function applyTimeoutUI(expiresAt) {
@@ -695,10 +737,9 @@
     function openLightbox(src) { document.getElementById('lightbox-img').src = src; document.getElementById('lightbox').style.display = 'flex'; }
     function closeMiniProfile() { document.getElementById('mp-overlay').style.display = 'none'; document.getElementById('mp-card').style.display = 'none'; }
     
-    function showMiniProfile(event, username, isSelf = false, isAdm = false, isNitro = false) {
+    function showMiniProfile(event, username, isSelf = false, isAdm = false, isNitro = false, userId = null) {
         const card = document.getElementById('mp-card');
         const overlay = document.getElementById('mp-overlay');
-        
         const safePfp = livePfps[username] || (isSelf ? myAvatar : 'https://via.placeholder.com/40');
 
         let nameColor = 'var(--text-normal)';
@@ -725,11 +766,16 @@
         document.getElementById('mp-hash').innerHTML = hashContent;
 
         const logoutBtn = document.getElementById('mp-logout-btn');
+        const msgBtn = document.getElementById('mp-message-btn');
+        
         if (isSelf) {
             logoutBtn.style.display = 'block';
+            msgBtn.style.display = 'none';
             logoutBtn.onclick = () => { logOut(); };
         } else {
             logoutBtn.style.display = 'none';
+            msgBtn.style.display = 'block';
+            msgBtn.onclick = () => { startDM(userId, username, safePfp); };
         }
 
         let top = event.clientY - 100;
@@ -809,6 +855,7 @@
             const isAdm = isAdmin(m.username, m.sender_id);
             const isNitro = m.isNitro || false;
             const uClass = getUserClass(m.username);
+            const isMeChannel = currentChannel === `dm-${myUUID}`;
             
             let nameColor = isAdm ? '#ffcc00' : (isNitro ? '#00a8fc' : 'var(--text-normal)');
             let tags = (isAdm ? ' 👑' : '') + (isNitro ? ' <span class="nitro-tag">Nitro</span>' : '');
@@ -847,10 +894,10 @@
             row.innerHTML = `${replyHtml}
             <div class="msg-flex">
                 <div class="avatar-col">
-                    ${(isFirst || replyHtml) ? `<img src="${m.pfp}" class="msg-pfp ${uClass}" onclick="showMiniProfile(event, '${m.username}')">` : ''}
+                    ${(isFirst || replyHtml) ? `<img src="${m.pfp}" class="msg-pfp ${uClass}" onclick="showMiniProfile(event, '${m.username}', ${m.sender_id === myUUID}, ${isAdm}, ${isNitro}, '${m.sender_id}')">` : ''}
                 </div>
                 <div class="content-col">
-                    ${(isFirst || replyHtml) ? `<div class="msg-header"><span class="username" style="color:${nameColor}" onclick="showMiniProfile(event, '${m.username}')">${m.username}${tags}</span><span class="timestamp">${new Date(m.created_at).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>` : ''}
+                    ${(isFirst || replyHtml) ? `<div class="msg-header"><span class="username" style="color:${nameColor}" onclick="showMiniProfile(event, '${m.username}', ${m.sender_id === myUUID}, ${isAdm}, ${isNitro}, '${m.sender_id}')">${m.username}${tags}</span><span class="timestamp">${new Date(m.created_at).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>` : ''}
                     <div class="msg-text">${content}</div>
                     ${imgSrc ? `<img src="${imgSrc}" class="chat-img" onclick="openLightbox(this.src)">` : ''}
                     ${reactHtml === '<div class="react-bar"></div>' ? '' : reactHtml}
@@ -858,7 +905,7 @@
             </div>
             <div class="msg-actions">
                 <div class="action-btn">😀<div class="emoji-picker"><span onclick="addReaction('${m.id}', '👍')">👍</span><span onclick="addReaction('${m.id}', '👎')">👎</span><span onclick="addReaction('${m.id}', '❤️')">❤️</span><span onclick="addReaction('${m.id}', '💀')">💀</span><span onclick="addReaction('${m.id}', '😭')">😭</span><span onclick="addReaction('${m.id}', '👀')">👀</span><span onclick="addReaction('${m.id}', '😡')">😡</span></div></div>
-                <div class="action-btn" onclick="setReply('${m.id}', '${m.username}', '${content.replace(/'/g, "\\'")}')">↩️</div>
+                ${isMeChannel ? '' : `<div class="action-btn" onclick="setReply('${m.id}', '${m.username}', '${content.replace(/'/g, "\\'")}')">↩️</div>`}
             </div>`;
             
             container.appendChild(row);
@@ -901,22 +948,14 @@
         }
     }
 
-    document.querySelectorAll('.channel-item').forEach(el => {
+    document.querySelectorAll('#sidebar-prime .channel-item').forEach(el => {
         el.onclick = () => {
             document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
             el.classList.add('active');
+            currentChannel = el.dataset.channel;
+            document.getElementById('chat-input').placeholder = `Message #${currentChannel}`;
             
-            const target = el.dataset.channel;
-            if (target === 'dm-me') {
-                currentChannel = `dm-${myUUID}`;
-                document.getElementById('chat-input').placeholder = `Message @Me`;
-            } else if (target === 'dm-friend') {
-                currentChannel = 'dm-friend';
-                document.getElementById('chat-input').placeholder = `Message @Friend 1`;
-            } else {
-                currentChannel = target;
-                document.getElementById('chat-input').placeholder = `Message #${currentChannel}`;
-            }
+            localStorage.setItem(`read_${currentChannel}`, Date.now().toString());
             loadMessages();
         }
     });
@@ -955,6 +994,92 @@
         } 
     };
 
+    // --- PHASE 3 DM LIST LOGIC ---
+    async function loadDMList() {
+        if (!myUUID) return;
+        
+        // Find all messages involving myUUID to parse the DM list & unread state
+        const { data: dmMsgs } = await db.from('Messages')
+            .select('channel, sender_id, created_at')
+            .like('channel', `%${myUUID}%`);
+            
+        let otherUUIDs = new Set();
+        let latestMsgTime = {}; 
+        
+        if (dmMsgs) {
+            dmMsgs.forEach(m => {
+                if (m.channel.includes('_')) {
+                    const uuids = m.channel.split('_');
+                    const otherId = uuids[0] === myUUID ? uuids[1] : uuids[0];
+                    if (otherId) {
+                        otherUUIDs.add(otherId);
+                        const time = new Date(m.created_at).getTime();
+                        if (!latestMsgTime[m.channel] || time > latestMsgTime[m.channel]) {
+                            latestMsgTime[m.channel] = time;
+                        }
+                    }
+                }
+            });
+        }
+
+        // Unread checks for the badge on the Discord icon
+        let hasUnread = false;
+        for (let channel in latestMsgTime) {
+            let lastRead = parseInt(localStorage.getItem(`read_${channel}`) || '0');
+            if (latestMsgTime[channel] > lastRead && currentChannel !== channel) {
+                hasUnread = true;
+            }
+        }
+        
+        const meChannel = `dm-${myUUID}`;
+        const meMsgs = dmMsgs?.filter(m => m.channel === meChannel) || [];
+        if (meMsgs.length > 0) {
+            const meLatest = Math.max(...meMsgs.map(m => new Date(m.created_at).getTime()));
+            let meLastRead = parseInt(localStorage.getItem(`read_${meChannel}`) || '0');
+            if (meLatest > meLastRead && currentChannel !== meChannel) {
+                hasUnread = true;
+            }
+        }
+
+        const badge = document.getElementById('dm-unread-badge');
+        if (badge) badge.style.display = hasUnread ? 'block' : 'none';
+
+        // Fetch user data for the list
+        let dmAccounts = [];
+        if (otherUUIDs.size > 0) {
+            const { data: accs } = await db.from('Accounts').select('id, username, avatar_base64').in('id', Array.from(otherUUIDs));
+            if (accs) dmAccounts = accs;
+        }
+
+        const container = document.getElementById('dm-list-container');
+        let html = '';
+        
+        // Render unsaved/temporary DMs from hitting the "Message" button
+        tempDMs.forEach(u => {
+            if (!otherUUIDs.has(u.id)) {
+                html += createDMItemHTML(u.id, u.username, u.pfp, false);
+            }
+        });
+
+        // Render saved DMs from the database
+        dmAccounts.forEach(u => {
+            const channel = getDMChannel(myUUID, u.id);
+            const isUnread = (latestMsgTime[channel] > (parseInt(localStorage.getItem(`read_${channel}`) || '0'))) && currentChannel !== channel;
+            html += createDMItemHTML(u.id, u.username, u.avatar_base64, isUnread);
+        });
+
+        container.innerHTML = html;
+    }
+
+    function createDMItemHTML(id, username, pfp, isUnread) {
+        const isActive = currentChannel === getDMChannel(myUUID, id);
+        return `<div class="channel-item dm-item ${isActive ? 'active' : ''}" onclick="openDMChannel('${id}', '${username}')">
+            <img src="${pfp || 'https://via.placeholder.com/40'}" class="dm-avatar">
+            <span style="${isUnread ? 'font-weight:bold; color:var(--text-normal);' : ''}">${username}</span>
+            ${isUnread ? '<div class="dm-unread-dot"></div>' : ''}
+        </div>`;
+    }
+
     async function loadMessages() {
         try {
             const container = document.getElementById('message-container');
@@ -967,6 +1092,9 @@
             container.innerHTML = ''; 
             lastUser = null; 
             lastTime = 0;
+            
+            // Mark channel as read as soon as messages are loaded
+            localStorage.setItem(`read_${currentChannel}`, Date.now().toString());
             
             let idToName = {};
             let idToPfp = {};
@@ -1029,7 +1157,7 @@
             }
 
             const memberHTML = `
-                <div class="member-item ${isOnline ? '' : 'offline'}" onclick="showMiniProfile(event, '${account.username}', false, ${isAdm}, ${isNitro})">
+                <div class="member-item ${isOnline ? '' : 'offline'}" onclick="showMiniProfile(event, '${account.username}', false, ${isAdm}, ${isNitro}, '${account.id}')">
                     <div class="member-avatar-wrapper">
                         <img src="${safeAvatar}" class="msg-pfp avatar-${account.id}" onerror="this.src='https://via.placeholder.com/40'">
                         ${isOnline ? '<div class="status-dot"></div>' : ''}
@@ -1128,8 +1256,11 @@
         myPfpImg.src = myAvatar || 'https://via.placeholder.com/40';
         myPfpImg.className = `user-avatar avatar-${myUUID}`; 
         
+        // Dynamically style the "Me" channel using your exact tags!
         const dmAvatar = document.getElementById('dm-me-avatar');
         if(dmAvatar) dmAvatar.src = myAvatar || 'https://via.placeholder.com/40';
+        const dmName = document.getElementById('dm-me-name');
+        if(dmName) dmName.innerHTML = `<span style="color:${nameColor}">${myUsername}${extraTags}</span>`;
 
         const presence = db.channel('online_users', { config: { presence: { key: myUUID } } });
         presence.on('presence', { event: 'sync' }, () => {
@@ -1138,7 +1269,11 @@
             if (status === 'SUBSCRIBED') await presence.track({ username: myUsername, pfp: myAvatar, isNitro: window.myIsNitro });
         });
 
-        db.channel('msgs').on('postgres_changes', { event: '*', schema: 'public', table: 'Messages' }, () => loadMessages()).subscribe();
+        db.channel('msgs').on('postgres_changes', { event: '*', schema: 'public', table: 'Messages' }, (payload) => {
+            if (payload.new.channel === currentChannel) loadMessages();
+            // Automatically refresh DM list/unread dots if the message involves you
+            if (payload.new.channel.includes(myUUID)) loadDMList();
+        }).subscribe();
         
         db.channel('user_timeouts').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Timeouts', filter: `target_id=eq.${myUUID}` }, (payload) => {
             const expiresAt = new Date(payload.new.expires_at).getTime();
@@ -1146,6 +1281,7 @@
         }).subscribe();
 
         loadMessages();
+        loadDMList();
         checkTimeouts();
     }
 
