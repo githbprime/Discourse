@@ -599,7 +599,7 @@
                 <div class="content-col">
                     ${(isFirst || replyHtml) ? `<div class="msg-header"><span class="username" style="color:${isAdm ? '#ffcc00' : ''}" onclick="showMiniProfile(event, '${m.username}')">${m.username}${isAdm ? ' 👑' : ''}</span><span class="timestamp">${new Date(m.created_at).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>` : ''}
                     <div class="msg-text">${content}</div>
-                    ${imgSrc ? `<img src="${imgSrc}" class="chat-img" onclick="openLightbox(this.src)">` : ''}
+                    ${imgSrc ? `<img src="${m.pfp}" class="msg-pfp ${uClass}" onclick="showMiniProfile(event, '${m.username}')">` : ''}
                     ${reactHtml === '<div class="react-bar"></div>' ? '' : reactHtml}
                 </div>
             </div>
@@ -683,7 +683,7 @@
         } 
     };
 
-    async function loadMessages() {
+async function loadMessages() {
         try {
             const container = document.getElementById('message-container');
             
@@ -691,25 +691,31 @@
             const { data: msgs, error: msgErr } = await db.from('Messages').select('*').eq('channel', currentChannel).order('created_at', { ascending: true });
             if (msgErr) throw new Error("Database error loading messages: " + msgErr.message);
 
-            // Fetch accounts to map sender_id back to username
-            const { data: accounts, error: accErr } = await db.from('Accounts').select('id, username');
+            // FIX: Add 'pfp' to the select query!
+            const { data: accounts, error: accErr } = await db.from('Accounts').select('id, username, avatar_base64');
             if (accErr) throw new Error("Database error loading accounts: " + accErr.message);
 
-            // Clear chat window
             container.innerHTML = ''; 
             lastUser = null; 
             lastTime = 0;
             
             let idToName = {};
-            if (accounts) accounts.forEach(acc => idToName[acc.id] = acc.username);
+            let idToPfp = {}; // New map for profile pictures
+            
+            if (accounts) {
+                accounts.forEach(acc => {
+                    idToName[acc.id] = acc.username;
+                    idToPfp[acc.id] = acc.pfp; // Maps the UUID to the profile picture URL
+                });
+            }
 
             if (msgs && msgs.length > 0) {
                 msgs.forEach(m => {
-                    // Map the hidden UUID back to the real username for the UI
+                    // Attach both the mapped username AND the mapped pfp before rendering
                     m.username = idToName[m.sender_id] || "Unknown User";
+                    m.pfp = idToPfp[m.sender_id] || "https://cdn.discordapp.com/embed/avatars/0.png"; // Fallback to default discord avatar if missing
                     renderMessage(m, true);
                 });
-                // Ensure chat scrolls to the bottom
                 container.scrollTop = container.scrollHeight;
             } else {
                 container.innerHTML = '<div style="padding:20px; color:#b5bac1; text-align:center;">No messages here yet. Be the first to say hi!</div>';
