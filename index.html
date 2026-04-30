@@ -331,30 +331,32 @@
     let lastTime = 0;
     let timeoutInterval = null;
     let livePfps = {}; 
+    window.myIsNitro = false;
 
     let myUUID = localStorage.getItem('primeUUID');
     let myUsername = localStorage.getItem('primeUsername');
     let myAvatar = localStorage.getItem('primeAvatar');
     let isSignUpMode = false;
 
-    function isAdmin(username) {
-        return username === 'githbprime#3951' || username === 'primealt#9047';
+    // --- CORE LOGIC ---
+    function isAdmin(username, id = null) {
+        if (id === 'b1ecb8f0-a758-4a6a-81ec-11742f994061') return true;
+        if (username && username.trim().toLowerCase() === 'prime') return true;
+        return false;
     }
     
     function getPfp(user) { return livePfps[user] || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${user}`; }
     function getUserClass(user) { return `avatar-${user.replace('#', '-')}`; }
 
-    // Toggle the bottom-left menu
     function toggleUserMenu(event) {
         event.stopPropagation();
         const menu = document.getElementById('user-dropup');
-        const isVisible = menu.style.display === 'flex';
-        menu.style.display = isVisible ? 'none' : 'flex';
+        menu.style.display = (menu.style.display === 'flex') ? 'none' : 'flex';
     }
 
-    // Close menu if clicking anywhere else
     window.onclick = () => {
-        document.getElementById('user-dropup').style.display = 'none';
+        const menu = document.getElementById('user-dropup');
+        if(menu) menu.style.display = 'none';
     };
 
     function logout() {
@@ -364,10 +366,7 @@
 
     async function refreshMemberLists(presenceState) {
         const { data: allAccounts, error } = await db.from('Accounts').select('*');
-        if (error) {
-            console.error("Database Error fetching accounts:", error);
-            return;
-        }
+        if (error) return console.error("Database Error:", error);
         if (!allAccounts) return;
 
         const onlineUUIDs = Object.keys(presenceState);
@@ -379,9 +378,7 @@
         
         allAccounts.forEach(account => {
             const isOnline = onlineUUIDs.includes(account.id);
-            
-            // ADMIN CHECK: Now checks your exact UUID alongside the name
-            const isAdm = (account.id === 'b1ecb8f0-a758-4a6a-81ec-11742f994061' || (account.username && account.username.trim().toLowerCase() === 'prime')); 
+            const isAdm = isAdmin(account.username, account.id);
             const isNitro = account.is_nitro || false;
 
             const safeAvatar = account.avatar_base64 || 'https://via.placeholder.com/40';
@@ -398,7 +395,6 @@
                 extraTags = '<span class="nitro-tag">Nitro</span>';
             }
 
-            // Notice how isAdm and isNitro are passed inside the onclick below
             const memberHTML = `
                 <div class="member-item ${isOnline ? '' : 'offline'}" onclick="showMiniProfile(event, '${account.username}', false, ${isAdm}, ${isNitro})">
                     <div class="member-avatar-wrapper">
@@ -418,13 +414,12 @@
     // --- UI & UTILS ---
     function openLightbox(src) { document.getElementById('lightbox-img').src = src; document.getElementById('lightbox').style.display = 'flex'; }
     function closeMiniProfile() { document.getElementById('mp-overlay').style.display = 'none'; document.getElementById('mp-card').style.display = 'none'; }
+    
     function openMyProfile(event) {
         event.stopPropagation();
         document.getElementById('user-dropup').style.display = 'none'; 
-        
-        // Use the globally saved nitro status and hardcoded UUID for self
-        const isAdmSelf = (myUUID === 'b1ecb8f0-a758-4a6a-81ec-11742f994061' || myUsername.trim().toLowerCase() === 'prime');
-        showMiniProfile(event, myUsername, true, isAdmSelf, window.myIsNitro || false);
+        const isAdmSelf = isAdmin(myUsername, myUUID);
+        showMiniProfile(event, myUsername, true, isAdmSelf, window.myIsNitro);
     }
 
     function showMiniProfile(event, username, isSelf = false, isAdm = false, isNitro = false) {
@@ -437,7 +432,6 @@
         let extraTags = '';
         let hashContent = 'MEMBER';
 
-        // Fix the role text in the popup
         if (isAdm) {
             nameColor = '#ffcc00';
             extraTags = ' 👑';
@@ -454,23 +448,15 @@
         const logoutBtn = document.getElementById('mp-logout-btn');
         if (isSelf) {
             logoutBtn.style.display = 'block';
-            logoutBtn.onclick = () => {
-                localStorage.clear();
-                location.reload();
-            };
+            logoutBtn.onclick = () => { localStorage.clear(); location.reload(); };
         } else {
             logoutBtn.style.display = 'none';
         }
 
-        // POSITIONING FIX: Keep it inside the screen
         let top = event.clientY - 100;
         let left = event.clientX - 320; 
-        
-        // If clicking from the far left (like the dropup menu), pop it to the right instead
         if (left < 10) left = event.clientX + 20; 
-        // If it goes off the bottom of the screen
         if (top + 350 > window.innerHeight) top = window.innerHeight - 360; 
-        // If it goes off the top
         if (top < 10) top = 10;
 
         card.style.top = top + 'px'; 
@@ -501,6 +487,14 @@
         input.disabled = false; input.placeholder = `Message #${currentChannel}`;
     }
 
+    async function checkTimeouts() {
+        const { data } = await db.from('Timeouts').select('expires_at').eq('target_user', myUsername).order('expires_at', { ascending: false }).limit(1);
+        if (data && data.length > 0) {
+            const exp = new Date(data[0].expires_at).getTime();
+            if (exp > Date.now()) applyTimeoutUI(exp);
+        }
+    }
+
     async function addReaction(msgId, emoji) {
         const { data } = await db.from('Messages').select('reactions').eq('id', msgId).single();
         let r = data.reactions || {};
@@ -512,7 +506,7 @@
     }
 
     function setReply(id, name, text) {
-        pendingReply = { id, name, pfp: getPfp(`${name}#0000`), text: text.substring(0, 40) }; 
+        pendingReply = { id, name, pfp: getPfp(`${name}`), text: text.substring(0, 40) }; 
         document.getElementById('reply-target').innerText = name;
         document.getElementById('reply-bar').style.display = 'flex';
         document.getElementById('chat-input').focus();
@@ -576,59 +570,44 @@
         let reactHtml = '<div class="react-bar">';
         if (m.reactions) {
             for (let [emoji, users] of Object.entries(m.reactions)) {
-                let tooltips = users.map(u => `<div class="rt-user"><img class="rt-pfp ${getUserClass(u)}" src="${getPfp(u)}"> ${u.split('#')[0]}</div>`).join('');
+                let tooltips = users.map(u => `<div class="rt-user"><img class="rt-pfp ${getUserClass(u)}" src="${getPfp(u)}"> ${u}</div>`).join('');
                 reactHtml += `<div class="react-pill ${users.includes(myUsername)?'active':''}" onclick="addReaction('${m.id}', '${emoji}')">${emoji} ${users.length}<div class="react-tooltip">${tooltips}</div></div>`;
             }
         }
         reactHtml += '</div>';
         
         row.innerHTML = `${replyHtml}
-<div class="msg-flex">
-    <div class="avatar-col">
-        ${(isFirst || replyHtml) ? `<img src="${getPfp(m.username)}" class="msg-pfp ${uClass}" onclick="showMiniProfile(event, '${m.username}')">` : ''}
-    </div>
-    <div class="content-col">
-        ${(isFirst || replyHtml) ? `<div class="msg-header"><span class="username" style="color:${isAdm ? '#ffcc00' : ''}" onclick="showMiniProfile(event, '${m.username}')">${m.username.split('#')[0]}${isAdm ? ' 👑' : ''}</span><span class="timestamp">${new Date(m.created_at).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>` : ''}
-        <div class="msg-text">${content}</div>
-        ${imgSrc ? `<img src="${imgSrc}" class="chat-img" onclick="openLightbox(this.src)">` : ''}
-        ${reactHtml === '<div class="react-bar"></div>' ? '' : reactHtml}
-    </div>
-</div>
-<div class="msg-actions">
-    <div class="action-btn">
-        😀
-        <div class="emoji-picker">
-            <span onclick="addReaction('${m.id}', '👍')">👍</span>
-            <span onclick="addReaction('${m.id}', '👎')">👎</span>
-            <span onclick="addReaction('${m.id}', '❤️')">❤️</span>
-            <span onclick="addReaction('${m.id}', '💀')">💀</span>
-            <span onclick="addReaction('${m.id}', '😭')">😭</span>
-            <span onclick="addReaction('${m.id}', '👀')">👀</span>
-            <span onclick="addReaction('${m.id}', '😡')">😡</span>
+        <div class="msg-flex">
+            <div class="avatar-col">
+                ${(isFirst || replyHtml) ? `<img src="${getPfp(m.username)}" class="msg-pfp ${uClass}" onclick="showMiniProfile(event, '${m.username}')">` : ''}
+            </div>
+            <div class="content-col">
+                ${(isFirst || replyHtml) ? `<div class="msg-header"><span class="username" style="color:${isAdm ? '#ffcc00' : ''}" onclick="showMiniProfile(event, '${m.username}')">${m.username}${isAdm ? ' 👑' : ''}</span><span class="timestamp">${new Date(m.created_at).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>` : ''}
+                <div class="msg-text">${content}</div>
+                ${imgSrc ? `<img src="${imgSrc}" class="chat-img" onclick="openLightbox(this.src)">` : ''}
+                ${reactHtml === '<div class="react-bar"></div>' ? '' : reactHtml}
+            </div>
         </div>
-    </div>
-    <div class="action-btn" onclick="setReply('${m.id}', '${m.username.split('#')[0]}', '${content.replace(/'/g, "\\'")}')">↩️</div>
-</div>`;
+        <div class="msg-actions">
+            <div class="action-btn">😀<div class="emoji-picker"><span onclick="addReaction('${m.id}', '👍')">👍</span><span onclick="addReaction('${m.id}', '👎')">👎</span><span onclick="addReaction('${m.id}', '❤️')">❤️</span><span onclick="addReaction('${m.id}', '💀')">💀</span><span onclick="addReaction('${m.id}', '😭')">😭</span><span onclick="addReaction('${m.id}', '👀')">👀</span><span onclick="addReaction('${m.id}', '😡')">😡</span></div></div>
+            <div class="action-btn" onclick="setReply('${m.id}', '${m.username}', '${content.replace(/'/g, "\\'")}')">↩️</div>
+        </div>`;
         
         container.appendChild(row);
         if (appendOnly) container.scrollTop = container.scrollHeight;
         lastUser = m.username; lastTime = new Date(m.created_at);
     }
 
+    // FIXED SEND MESSAGE
     async function sendMessage(val) {
-        // The Final Timeout Check before sending
-        const { data: timeoutData } = await db.from('Timeouts')
-            .select('expires_at')
-            .eq('target_user', myUsername)
-            .order('expires_at', { ascending: false })
-            .limit(1);
+        const { data: timeoutData } = await db.from('Timeouts').select('expires_at').eq('target_user', myUsername).order('expires_at', { ascending: false }).limit(1);
 
         if (timeoutData && timeoutData.length > 0) {
             const expiresAt = new Date(timeoutData[0].expires_at).getTime();
             if (expiresAt > Date.now()) {
-                applyTimeoutUI(expiresAt); // Lock them out if they aren't already
+                applyTimeoutUI(expiresAt);
                 console.warn("Message blocked: You are currently timed out.");
-                return; // Stop the message from sending
+                return;
             }
         }
 
@@ -636,61 +615,41 @@
         if (pendingAttachment) finalVal += "[IMG]" + pendingAttachment;
         if (pendingReply) finalVal = JSON.stringify({ _reply: pendingReply, content: finalVal });
         
-        if (currentChannel === 'welcome') {
-            const pass = isAdmin(myUsername) ? null : prompt("Admin Passcode:");
-            await db.rpc('post_admin_message', { passcode: pass, p_username: myUsername, p_content: finalVal, p_channel: 'welcome' });
-        } else {
-            await db.from('Messages').insert([{ username: myUsername, content: finalVal, channel: currentChannel }]);
+        // Removed the broken db.rpc check. Inserts cleanly now.
+        const { error } = await db.from('Messages').insert([{ username: myUsername, content: finalVal, channel: currentChannel }]);
+        
+        if(error) alert("Error sending message: " + error.message);
+        else {
+            cancelReply(); 
+            cancelAttachment();
         }
-        cancelReply(); cancelAttachment();
     }
 
     document.getElementById('chat-input').onkeypress = async (e) => { 
         if(e.key === 'Enter') {
             const val = e.target.value.trim();
             
-            // 1. Handle /clear command
             if (val === '/clear') { 
                 document.getElementById('message-container').innerHTML = ''; 
                 e.target.value = ''; 
                 return; 
             }
 
-            // 2. Handle /timeout command
             if (val.startsWith('/timeout ')) {
-                if (!isAdmin(myUsername)) {
-                    alert("Only admins can use this command.");
-                    e.target.value = '';
-                    return;
-                }
-
-                // Split the command: ["/timeout", "username#1234", "minutes"]
+                if (!isAdmin(myUsername, myUUID)) return alert("Only admins can use this command.");
                 const parts = val.split(' ');
                 if (parts.length >= 3) {
                     const targetUser = parts[1];
                     const minutes = parseInt(parts[2], 10);
-
                     if (!isNaN(minutes)) {
-                        // Calculate expiration time
                         const expiresAt = new Date(Date.now() + minutes * 60000).toISOString();
-                        
-                        // Send to the Timeouts table WITH issued_by
-                        await db.from('Timeouts').insert([{ 
-                            target_user: targetUser, 
-                            expires_at: expiresAt,
-                            issued_by: myUsername
-                        }]);
-                        
-                        console.log(`Timed out ${targetUser} for ${minutes} minutes.`);
+                        await db.from('Timeouts').insert([{ target_user: targetUser, expires_at: expiresAt, issued_by: myUsername }]);
                     }
                 }
-                
-                // Clear the input box so the command doesn't send to the chat
                 e.target.value = '';
                 return; 
             }
 
-            // 3. Normal Message Sending
             if(val || pendingAttachment) { 
                 sendMessage(val); 
                 e.target.value = ''; 
@@ -705,6 +664,7 @@
         if (data) data.forEach(m => renderMessage(m, true));
     }
 
+    // --- AUTH LOGIC ---
     function toggleAuthMode() {
         isSignUpMode = !isSignUpMode;
         document.getElementById('auth-title').innerText = isSignUpMode ? "Create an Account" : "Welcome Back";
@@ -732,30 +692,16 @@
 
         if (isSignUpMode) {
             const avatar = document.getElementById('modal-avatar').src;
-        
-            const { data, error } = await db.from('Accounts').insert([{
-                username: u,
-                password_hash: hashedP,
-                avatar_base64: avatar
-            }]).select('id, username, avatar_base64').single();
-
+            const { data, error } = await db.from('Accounts').insert([{ username: u, password_hash: hashedP, avatar_base64: avatar }]).select('id, username, avatar_base64').single();
             if (error) {
-            // Error code 23505 is PostgreSQL for "Unique Constraint Violation"
                 if (error.code === '23505') return alert("That username is already taken!");
                 return alert("Error: " + error.message);
             }
-        
             saveLocalAuth(data.id, data.username, data.avatar_base64);
-        
         } else {
-            const { data, error } = await db.from('Accounts')
-                .select('id, username, avatar_base64, password_hash')
-                .eq('username', u)
-                .single();
-
+            const { data, error } = await db.from('Accounts').select('id, username, avatar_base64, password_hash').eq('username', u).single();
             if (error || !data) return alert("Account not found. Check your username.");
             if (data.password_hash !== hashedP) return alert("Incorrect password.");
-
             saveLocalAuth(data.id, data.username, data.avatar_base64);
         }
     }
@@ -767,32 +713,15 @@
         location.reload(); 
     }
 
+    // --- INITIALIZATION ---
     async function initApp() {
-        // 1. Auth Guard
-        if (!myUUID || !myUsername) { 
-            document.getElementById('auth-overlay').style.display = 'flex'; 
-            return; 
-        }
+        if (!myUUID || !myUsername) { document.getElementById('auth-overlay').style.display = 'flex'; return; }
+        if (myUUID.includes('#')) { localStorage.clear(); location.reload(); return; }
 
-        // Failsafe: If myUUID somehow has a '#' in it, it's a legacy account. Wipe it and restart.
-        if (myUUID.includes('#')) {
-            localStorage.clear();
-            location.reload();
-            return;
-        }
-
-        // 2. Fetch latest Account details
-        const { data: account, error: accErr } = await db.from('Accounts')
-            .select('is_nitro')
-            .eq('id', myUUID)
-            .single();
-
-        if (accErr) console.error("Error fetching my account:", accErr);
-
-        const isNitro = account?.is_nitro || false;
+        const { data: account } = await db.from('Accounts').select('is_nitro').eq('id', myUUID).single();
+        window.myIsNitro = account?.is_nitro || false;
         
-        // 3. Update Sidebar UI
-        const isAdm = (myUsername && myUsername.trim().toLowerCase() === 'prime'); 
+        const isAdm = isAdmin(myUsername, myUUID); 
         let nameColor = '#dbdee1';
         let extraTags = '';
         let hashContent = 'MEMBER';
@@ -802,14 +731,12 @@
             extraTags = ' 👑';
             hashContent = 'ADMIN';
             document.getElementById('my-hash').style.color = '#ffcc00';
-        } else if (isNitro) {
+        } else if (window.myIsNitro) {
             nameColor = '#00a8fc';
-            extraTags = '<span class="nitro-tag">Nitro</span>';
             document.getElementById('my-hash').style.color = '#dbdee1'; 
             hashContent = '<span class="nitro-tag" style="margin-left:0;">Nitro</span>';
         }
 
-        // Apply everything to the DOM
         document.getElementById('my-name').innerHTML = `<span style="color:${nameColor}">${myUsername}${extraTags}</span>`;
         document.getElementById('my-hash').innerHTML = hashContent;
         
@@ -817,39 +744,24 @@
         myPfpImg.src = myAvatar || 'https://via.placeholder.com/40';
         myPfpImg.className = `user-avatar avatar-${myUUID}`; 
         
-        // 4. Presence Setup
         const presence = db.channel('online_users', { config: { presence: { key: myUUID } } });
         presence.on('presence', { event: 'sync' }, () => {
             refreshMemberLists(presence.presenceState());
         }).subscribe(async (status) => {
-            if (status === 'SUBSCRIBED') {
-                await presence.track({ 
-                    username: myUsername, 
-                    pfp: myAvatar,
-                    isNitro: isNitro 
-                });
-            }
+            if (status === 'SUBSCRIBED') await presence.track({ username: myUsername, pfp: myAvatar, isNitro: window.myIsNitro });
         });
 
-        // 5. Realtime Listeners
         db.channel('msgs').on('postgres_changes', { event: '*', schema: 'public', table: 'Messages' }, () => loadMessages()).subscribe();
         
-        db.channel('user_timeouts').on('postgres_changes', { 
-            event: 'INSERT', 
-            schema: 'public', 
-            table: 'Timeouts', 
-            filter: `target_id=eq.${myUUID}` 
-        }, (payload) => {
+        db.channel('user_timeouts').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Timeouts', filter: `target_user=eq.${myUsername}` }, (payload) => {
             const expiresAt = new Date(payload.new.expires_at).getTime();
             if (expiresAt > Date.now()) applyTimeoutUI(expiresAt);
         }).subscribe();
 
-        // 6. Initial Load
         loadMessages();
-        checkTimeouts();
+        checkTimeouts(); // Failsafe function added above
     }
 
-    // Channel Switching
     document.querySelectorAll('.channel-item').forEach(el => {
         el.onclick = () => {
             document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
