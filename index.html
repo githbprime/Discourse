@@ -705,7 +705,7 @@ async function loadMessages() {
             if (accounts) {
                 accounts.forEach(acc => {
                     idToName[acc.id] = acc.username;
-                    idToPfp[acc.id] = acc.pfp; // Maps the UUID to the profile picture URL
+                    idToPfp[acc.id] = acc.avatar_base64; // Maps the UUID to the profile picture URL
                 });
             }
 
