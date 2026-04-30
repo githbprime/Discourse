@@ -63,6 +63,8 @@
         /* Specific Button Widths */
         .account-actions { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; max-width: 660px; }
         .settings-btn { padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s;}
+        .brand-btn { background: #5865f2; }
+        .brand-btn:hover { background: #4752c4; }
         .default-btn { background: #4e5058; }
         .default-btn:hover { background: #6d6f78; }
         .danger-btn { background: transparent; border: 1px solid #f23f43; color: #f23f43; }
@@ -424,90 +426,11 @@
     let myAvatar = localStorage.getItem('primeAvatar');
     let isSignUpMode = false;
 
-    // Add these to your existing JS
-
+    // --- GLOBAL SETTINGS VARIABLES ---
+    let currentTheme = localStorage.getItem('prime_theme') || 'default';
+    let currentMode = localStorage.getItem('prime_mode') || 'dark';
     let tempSelectedTheme = currentTheme;
     let tempPfpBase64 = null;
-
-    function openSettings() {
-        document.getElementById('settings-modal').style.display = 'flex';
-        document.getElementById('user-dropup').style.display = 'none';
-    
-    // Fill in current data
-        document.getElementById('edit-username').value = myUsername || 'Unknown';
-        document.getElementById('settings-username-display').innerText = myUsername || 'Unknown';
-        document.getElementById('settings-pfp-preview').src = myAvatar || 'https://via.placeholder.com/80';
-    
-        const upsell = document.getElementById('nitro-theme-upsell');
-        const controls = document.getElementById('theme-controls');
-    
-        if (window.myIsNitro) {
-            upsell.style.display = 'none'; 
-            controls.style.opacity = '1';
-            controls.style.pointerEvents = 'auto';
-        } else {
-            upsell.style.display = 'block'; 
-            controls.style.opacity = '0.4';
-            controls.style.pointerEvents = 'none'; 
-        }
-    }
-
-// Editable PFP Logic
-    function previewPfp(event) {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('settings-pfp-preview').src = e.target.result;
-                tempPfpBase64 = e.target.result; // Store it temporarily until they hit Save
-            };
-            reader.readAsDataURL(file);
-        }
-    }
-
-    async function saveAccountSettings() {
-    // If they changed their PFP, save it to the database
-        if (tempPfpBase64) {
-            try {
-                const { error } = await db.from('Accounts')
-                    .update({ avatar_base64: tempPfpBase64 })
-                    .eq('id', myUUID);
-            
-                if (error) throw error;
-            
-            // Update local cache
-                localStorage.setItem('primeAvatar', tempPfpBase64);
-                myAvatar = tempPfpBase64;
-                alert("Profile Picture Updated!");
-            } catch (err) {
-                console.error("Failed to update PFP:", err);
-                alert("Error updating profile.");
-            }
-        } else {
-            alert("No changes made.");
-        }
-    }
-
-// Theme Engine Logic (With Update Button)
-    function selectTheme(themeName) {
-        tempSelectedTheme = themeName;
-    // Highlight the selected button visually
-        document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('selected'));
-        event.target.classList.add('selected');
-    }
-
-    function saveThemeSettings() {
-        const modeSelect = document.getElementById('mode-select').value;
-    
-        currentTheme = tempSelectedTheme;
-        currentMode = modeSelect;
-    
-        localStorage.setItem('prime_theme', currentTheme);
-        localStorage.setItem('prime_mode', currentMode);
-    
-        applyThemeClasses();
-        alert("Appearance Updated!");
-    }
 
     // --- CORE LOGIC ---
     function isAdmin(username, id = null) {
@@ -533,26 +456,24 @@
     // --- SETTINGS UI LOGIC ---
     function openSettings() {
         document.getElementById('settings-modal').style.display = 'flex';
-        document.getElementById('user-dropup').style.display = 'none'; // Close dropup
+        document.getElementById('user-dropup').style.display = 'none';
     
-        // Fill in current username
-        if(document.getElementById('edit-username')) {
-            document.getElementById('edit-username').value = myUsername || 'Unknown';
-        }
-
-        // Nitro Upsell Check
+        // Fill in current data
+        document.getElementById('edit-username').value = myUsername || 'Unknown';
+        document.getElementById('settings-username-display').innerText = myUsername || 'Unknown';
+        document.getElementById('settings-pfp-preview').src = myAvatar || 'https://via.placeholder.com/80';
+    
         const upsell = document.getElementById('nitro-theme-upsell');
         const controls = document.getElementById('theme-controls');
     
-        // FIX: Changed isNitro to window.myIsNitro
         if (window.myIsNitro) {
-            upsell.style.display = 'none'; // Hide banner if they HAVE Nitro
+            upsell.style.display = 'none'; 
             controls.style.opacity = '1';
             controls.style.pointerEvents = 'auto';
         } else {
-            upsell.style.display = 'block'; // Show banner if they DON'T have Nitro
+            upsell.style.display = 'block'; 
             controls.style.opacity = '0.4';
-            controls.style.pointerEvents = 'none'; // Prevent clicking
+            controls.style.pointerEvents = 'none'; 
         }
     }
 
@@ -561,64 +482,102 @@
     }
 
     function switchSettingsTab(tabName) {
-        // Hide all contents
         document.getElementById('settings-account').style.display = 'none';
         document.getElementById('settings-themes').style.display = 'none';
-    
-        // Remove active state from all tabs
         document.getElementById('tab-account').classList.remove('active');
         document.getElementById('tab-themes').classList.remove('active');
-    
-        // Show selected
         document.getElementById(`settings-${tabName}`).style.display = 'block';
         document.getElementById(`tab-${tabName}`).classList.add('active');
     }
 
+    function previewPfp(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('settings-pfp-preview').src = e.target.result;
+                tempPfpBase64 = e.target.result; 
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    async function saveAccountSettings() {
+        let updates = {};
+        const newPass = document.getElementById('edit-password').value;
+
+        if (tempPfpBase64) updates.avatar_base64 = tempPfpBase64;
+        
+        if (newPass.trim() !== '') {
+            const msgBuffer = new TextEncoder().encode(newPass);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            updates.password_hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        if (Object.keys(updates).length > 0) {
+            try {
+                const { error } = await db.from('Accounts').update(updates).eq('id', myUUID);
+                if (error) throw error;
+                
+                if (updates.avatar_base64) {
+                    localStorage.setItem('primeAvatar', tempPfpBase64);
+                    myAvatar = tempPfpBase64;
+                }
+                document.getElementById('edit-password').value = '';
+                alert("Account Updated Successfully!");
+            } catch (err) {
+                console.error("Failed to update account:", err);
+                alert("Error updating profile.");
+            }
+        } else {
+            alert("No changes made.");
+        }
+    }
+
+    function selectTheme(themeName) {
+        tempSelectedTheme = themeName;
+        document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('selected'));
+        if (event && event.target) {
+            event.target.classList.add('selected');
+        }
+    }
+
+    function saveThemeSettings() {
+        const modeSelect = document.getElementById('mode-select').value;
+        currentTheme = tempSelectedTheme;
+        currentMode = modeSelect;
+    
+        localStorage.setItem('prime_theme', currentTheme);
+        localStorage.setItem('prime_mode', currentMode);
+    
+        applyThemeClasses();
+        alert("Appearance Updated!");
+    }
+
+    function applyThemeClasses() {
+        document.body.className = document.body.className.replace(/theme-\w+/g, '').replace(/mode-\w+/g, '').trim();
+        if (currentTheme !== 'default') {
+            document.body.classList.add(`theme-${currentTheme}`);
+        }
+        document.body.classList.add(`mode-${currentMode}`);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        applyThemeClasses();
+        const modeSelect = document.getElementById('mode-select');
+        if (modeSelect) modeSelect.value = currentMode;
+    });
+
     // --- ACCOUNT ACTIONS ---
-    // FIX: Combined duplicate logout functions into one
     function logOut() {
-        localStorage.clear(); // Clears primeUUID, primeUsername, etc.
+        localStorage.clear(); 
         window.location.reload(); 
     }
 
     function deleteAccountAlert() {
         alert("This feature is under construction. For assistance, please contact #support");
     }
-
-    // --- THEME ENGINE ---
-    // Pull saved preferences from cache, or use defaults
-    let currentTheme = localStorage.getItem('prime_theme') || 'default';
-    let currentMode = localStorage.getItem('prime_mode') || 'dark';
-
-    function applyThemeClasses() {
-        // Remove old theme classes
-        document.body.className = document.body.className.replace(/theme-\w+/g, '').replace(/mode-\w+/g, '');
-    
-        // If not default, apply the specific theme variables
-        if (currentTheme !== 'default') {
-            document.body.classList.add(`theme-${currentTheme}`);
-            document.body.classList.add(`mode-${currentMode}`);
-        }
-    }
-
-    function setTheme(themeName) {
-        currentTheme = themeName;
-        localStorage.setItem('prime_theme', themeName); // Save to cache
-        applyThemeClasses();
-    }
-
-    function setMode(modeType) {
-        currentMode = modeType;
-        localStorage.setItem('prime_mode', modeType); // Save to cache
-        applyThemeClasses();
-    }
-
-    // Ensure dropdown selector matches cached mode on load
-    document.addEventListener('DOMContentLoaded', () => {
-        applyThemeClasses();
-        const modeSelect = document.getElementById('mode-select');
-        if (modeSelect) modeSelect.value = currentMode;
-    });
 
     async function refreshMemberLists(presenceState) {
         const { data: allAccounts, error } = await db.from('Accounts').select('*');
@@ -744,7 +703,7 @@
     }
 
     async function checkTimeouts() {
-        const { data } = await db.from('Timeouts').select('expires_at').eq('target_user', myUsername).order('expires_at', { ascending: false }).limit(1);
+        const { data } = await db.from('Timeouts').select('expires_at').eq('target_id', myUUID).order('expires_at', { ascending: false }).limit(1);
         if (data && data.length > 0) {
             const exp = new Date(data[0].expires_at).getTime();
             if (exp > Date.now()) applyTimeoutUI(exp);
@@ -875,9 +834,7 @@
         }
     }
 
-    // FIXED SEND MESSAGE
-     async function sendMessage(val) {
-        // FIX: Use target_id instead of target_user
+    async function sendMessage(val) {
         const { data: timeoutData } = await db.from('Timeouts').select('expires_at').eq('target_id', myUUID).order('expires_at', { ascending: false }).limit(1);
 
         if (timeoutData && timeoutData.length > 0) {
@@ -893,7 +850,6 @@
         if (pendingAttachment) finalVal += "[IMG]" + pendingAttachment;
         if (pendingReply) finalVal = JSON.stringify({ _reply: pendingReply, content: finalVal });
         
-        // FIX: Use sender_id instead of username
         const { error } = await db.from('Messages').insert([{ 
             sender_id: myUUID, 
             content: finalVal, 
@@ -924,8 +880,10 @@
                     const targetUser = parts[1];
                     const minutes = parseInt(parts[2], 10);
                     if (!isNaN(minutes)) {
+                        const { data: targetAccount } = await db.from('Accounts').select('id').eq('username', targetUser).single();
+                        if (!targetAccount) return alert("User not found!");
                         const expiresAt = new Date(Date.now() + minutes * 60000).toISOString();
-                        await db.from('Timeouts').insert([{ target_user: targetUser, expires_at: expiresAt, issued_by: myUsername }]);
+                        await db.from('Timeouts').insert([{ target_id: targetAccount.id, expires_at: expiresAt, issued_by_id: myUUID }]);
                     }
                 }
                 e.target.value = '';
@@ -1072,7 +1030,7 @@
 
         db.channel('msgs').on('postgres_changes', { event: '*', schema: 'public', table: 'Messages' }, () => loadMessages()).subscribe();
         
-        db.channel('user_timeouts').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Timeouts', filter: `target_user=eq.${myUsername}` }, (payload) => {
+        db.channel('user_timeouts').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Timeouts', filter: `target_id=eq.${myUUID}` }, (payload) => {
             const expiresAt = new Date(payload.new.expires_at).getTime();
             if (expiresAt > Date.now()) applyTimeoutUI(expiresAt);
         }).subscribe();
@@ -1093,41 +1051,41 @@
 
     initApp();
 </script>
-<div id="settings-modal" class="settings-fullscreen" style="display:none;">
-    
-    <div class="settings-sidebar">
-        <div class="sidebar-inner">
-            <h3 class="sidebar-header">USER SETTINGS</h3>
-            <div class="settings-tab active" id="tab-account" onclick="switchSettingsTab('account')">My Account</div>
-            <div class="settings-tab" id="tab-themes" onclick="switchSettingsTab('themes')">Appearance</div>
-            
-            <div class="sidebar-divider"></div>
-            
-            <div class="settings-tab" onclick="closeSettings()">
-                ⬅ Back to Chat
+
+<div id="settings-modal" class="modal-overlay">
+    <div class="settings-container">
+        
+        <div class="settings-sidebar">
+            <div class="sidebar-inner">
+                <div class="sidebar-header">USER SETTINGS</div>
+                <div class="settings-tab active" id="tab-account" onclick="switchSettingsTab('account')">My Account</div>
+                <div class="settings-tab" id="tab-themes" onclick="switchSettingsTab('themes')">Appearance</div>
+                
+                <div class="dropup-divider" style="margin: 12px 0;"></div>
+                
+                <div class="settings-back-btn" onclick="closeSettings()">
+                    ⬅ Back to Chat
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="settings-content-area">
-        <div class="content-inner">
-            
-            <div class="settings-content" id="settings-account" style="display:block;">
+        <div class="settings-content">
+            <div id="settings-account" style="display: block;">
                 <h2>My Account</h2>
                 
-                <div class="profile-card">
-                    <div class="profile-banner"></div>
-                    <div class="profile-header">
-                        <div class="avatar-wrapper" onclick="document.getElementById('pfp-upload').click()">
-                            <img src="https://via.placeholder.com/80" id="settings-pfp-preview" class="profile-avatar">
-                            <div class="avatar-edit-overlay">EDIT</div>
+                <div class="profile-edit-card">
+                    <div class="profile-banner-preview"></div>
+                    <div class="profile-header-row">
+                        <div class="editable-avatar" onclick="document.getElementById('pfp-upload').click()">
+                            <img src="https://via.placeholder.com/80" id="settings-pfp-preview">
+                            <div class="avatar-overlay">CHANGE PFP</div>
                         </div>
-                        <div class="profile-info">
-                            <h3 id="settings-username-display">Username</h3>
+                        <div style="margin-left: 15px; padding-bottom: 5px;">
+                            <h3 id="settings-username-display" style="color:white; margin:0;">Username</h3>
                         </div>
                     </div>
-                    
-                    <div class="profile-body">
+
+                    <div class="profile-body-inner">
                         <div class="input-group">
                             <label>USERNAME</label>
                             <input type="text" id="edit-username" class="settings-input" disabled>
@@ -1139,7 +1097,7 @@
                         
                         <input type="file" id="pfp-upload" style="display:none" accept="image/*" onchange="previewPfp(event)">
                         
-                        <button class="settings-btn brand-btn" onclick="saveAccountSettings()">Save Account Changes</button>
+                        <button class="settings-btn brand-btn" style="width: max-content;" onclick="saveAccountSettings()">Update Profile</button>
                     </div>
                 </div>
 
@@ -1149,7 +1107,7 @@
                 </div>
             </div>
 
-            <div class="settings-content" id="settings-themes" style="display:none;">
+            <div id="settings-themes" style="display: none;">
                 <h2>Appearance</h2>
                 
                 <div id="nitro-theme-upsell" class="nitro-banner">
