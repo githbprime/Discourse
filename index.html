@@ -195,7 +195,7 @@
         .chat-img { max-width: 100%; max-height: 350px; border-radius: 8px; margin: 6px 0; display: block; background: var(--bg-secondary); cursor: zoom-in; }
 
         /* INPUT AREA */
-        .input-wrapper { padding: 0 16px 24px; position: relative; }
+        .input-wrapper { padding: 0 16px 24px; position: relative; transition: 0.2s; }
         .preview-bar { background: var(--bg-secondary); padding: 8px 16px; border-radius: 8px 8px 0 0; display: none; align-items: center; justify-content: space-between; font-size: 13px; color: var(--text-muted); margin-bottom: 2px; }
         .preview-img-container { position: relative; display: inline-block; }
         .preview-img { height: 60px; border-radius: 4px; }
@@ -283,7 +283,7 @@
 
 <div class="app-container">
     <div class="server-bar">
-        <!-- Direct Messages Icon (Now has the Unread Dot!) -->
+        <!-- Direct Messages Icon -->
         <div class="server-icon" id="icon-dm" onclick="switchView('dm')">
             <img src="https://img.icons8.com/ios-filled/50/ffffff/discord-logo.png" alt="DMs">
             <div id="dm-unread-badge" class="dm-unread-badge"></div>
@@ -305,14 +305,17 @@
             </div>
         </div>
 
-        <!-- DM Sidebar (Phase 3 Layout) -->
+        <!-- DM Sidebar -->
         <div id="sidebar-dm" class="sidebar-view" style="display:none;">
             <div class="channel-header">Direct Messages</div>
             <div class="channel-list">
-                <!-- "Me" Private Channel that securely mirrors your tags! -->
-                <div class="channel-item dm-item" id="dm-me-item" onclick="openDMChannel('me')">
-                    <img src="" class="dm-avatar" id="dm-me-avatar">
-                    <span id="dm-me-name" style="font-weight:bold;">Loading...</span>
+                <!-- Announcements Channel (Loads #welcome) -->
+                <div class="channel-item dm-item" id="dm-announcements-item" onclick="openAnnouncements()">
+                    <div class="member-avatar-wrapper" style="width:32px; height:32px;">
+                        <img src="https://via.placeholder.com/40" class="dm-avatar" id="dm-announcements-avatar">
+                    </div>
+                    <span style="font-weight:bold; color:var(--text-normal); flex-grow:1;">Announcements</span>
+                    <div class="dm-unread-dot" id="dm-announcements-unread" style="display:none;"></div>
                 </div>
                 <div style="padding: 10px; color: var(--text-muted); font-size: 11px; font-weight: bold; text-transform: uppercase;">Direct Messages</div>
                 <!-- Dynamic DM List will populate right here! -->
@@ -338,7 +341,7 @@
 
     <div class="chat-area">
         <div class="chat-messages" id="message-container"></div>
-        <div class="input-wrapper">
+        <div class="input-wrapper" id="chat-input-wrapper">
             <div id="reply-bar" class="preview-bar">
                 <span>Replying to <strong id="reply-target"></strong></span>
                 <span class="cancel-btn" onclick="cancelReply()">✕</span>
@@ -502,6 +505,32 @@
     function getUserClass(user) { return `avatar-${user.replace('#', '-')}`; }
     function getDMChannel(u1, u2) { return [u1, u2].sort().join('_'); }
 
+    // --- CHAT INPUT UI (Dimming & Disabling) ---
+    function updateChatInputUI(targetName = '') {
+        const inputBox = document.getElementById('input-box-wrapper');
+        const chatInput = document.getElementById('chat-input');
+        const isAdmSelf = myUUID === 'b1ecb8f0-a758-4a6a-81ec-11742f994061';
+        
+        if (currentChannel === 'welcome' && !isAdmSelf) {
+            inputBox.style.opacity = '0.3';
+            inputBox.style.pointerEvents = 'none';
+            chatInput.placeholder = "Read-only channel. Reactions only.";
+            chatInput.disabled = true;
+        } else {
+            inputBox.style.opacity = '1';
+            inputBox.style.pointerEvents = 'auto';
+            chatInput.disabled = false;
+            
+            if (currentChannel === 'welcome') {
+                chatInput.placeholder = `Message #welcome`;
+            } else if (currentChannel.startsWith('dm-')) {
+                chatInput.placeholder = `Message @${targetName || 'User'}`;
+            } else {
+                chatInput.placeholder = `Message #${currentChannel}`;
+            }
+        }
+    }
+
     // --- VIEWS & NAVIGATION ---
     function switchView(view) {
         const isDM = (view === 'dm');
@@ -512,8 +541,14 @@
         document.getElementById('icon-prime').classList.toggle('active', !isDM);
         
         if (isDM) {
-            if (!currentChannel.startsWith('dm-')) {
-                openDMChannel('me');
+            if (!currentChannel.startsWith('dm-') && currentChannel !== 'welcome') {
+                openAnnouncements();
+            } else if (currentChannel === 'welcome') {
+                openAnnouncements(); // Ensures proper active highlighting
+            } else {
+                const targetId = currentChannel.replace('dm-', '').replace(myUUID, '').replace('_', '');
+                const targetUser = tempDMs.find(u => u.id === targetId)?.username || 'User';
+                updateChatInputUI(targetUser);
             }
             loadDMList();
         } else {
@@ -521,43 +556,45 @@
                 currentChannel = 'welcome';
             }
             document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
-            const primeItem = document.querySelector(`[data-channel="${currentChannel}"]`);
+            const primeItem = document.querySelector(`#sidebar-prime [data-channel="${currentChannel}"]`);
             if (primeItem) primeItem.classList.add('active');
             
-            document.getElementById('chat-input').placeholder = `Message #${currentChannel}`;
+            updateChatInputUI();
             loadMessages();
         }
+    }
+
+    // Opens the global Announcements (#welcome) from the DM list
+    function openAnnouncements() {
+        document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
+        const annItem = document.getElementById('dm-announcements-item');
+        if (annItem) annItem.classList.add('active');
+        
+        currentChannel = 'welcome';
+        updateChatInputUI('Announcements');
+        localStorage.setItem(`read_${currentChannel}`, Date.now().toString());
+        loadMessages();
+        loadDMList();
     }
 
     // Opens specific DM conversations
     function openDMChannel(targetId, targetName = '') {
         document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
+        currentChannel = getDMChannel(myUUID, targetId);
+        updateChatInputUI(targetName);
         
-        if (targetId === 'me') {
-            currentChannel = `dm-${myUUID}`;
-            document.getElementById('chat-input').placeholder = `Message @Me (Private notes)`;
-            document.getElementById('dm-me-item').classList.add('active');
-        } else {
-            currentChannel = getDMChannel(myUUID, targetId);
-            document.getElementById('chat-input').placeholder = `Message @${targetName}`;
-        }
-        
-        // Update Local Read State
         localStorage.setItem(`read_${currentChannel}`, Date.now().toString());
         loadMessages();
-        loadDMList(); // Refreshes UI to clear unread dots
+        loadDMList(); 
     }
 
     // Starts a DM from clicking "Message" on a profile card
     function startDM(targetId, targetUsername, targetPfp) {
         closeMiniProfile();
-        if (targetId === myUUID) {
-            switchView('dm');
-            openDMChannel('me');
-            return;
-        }
         
-        // Temporarily add to our DM list if not already there
+        // Prevent messaging Announcements / Welcome channel this way
+        if (targetId === myUUID) return; 
+        
         if (!tempDMs.find(u => u.id === targetId)) {
             tempDMs.push({ id: targetId, username: targetUsername, pfp: targetPfp });
         }
@@ -648,7 +685,12 @@
                     localStorage.setItem('primeAvatar', tempPfpBase64);
                     myAvatar = tempPfpBase64;
                     document.getElementById('my-pfp').src = myAvatar;
-                    document.getElementById('dm-me-avatar').src = myAvatar;
+                    
+                    // If Admin changes their PFP, update the Announcements avatar too
+                    if (myUUID === 'b1ecb8f0-a758-4a6a-81ec-11742f994061') {
+                        const annAvatar = document.getElementById('dm-announcements-avatar');
+                        if (annAvatar) annAvatar.src = myAvatar;
+                    }
                 }
                 document.getElementById('edit-password').value = '';
                 alert("Account Updated Successfully!");
@@ -775,7 +817,18 @@
         } else {
             logoutBtn.style.display = 'none';
             msgBtn.style.display = 'block';
-            msgBtn.onclick = () => { startDM(userId, username, safePfp); };
+            
+            // Dim and disable message button if they are viewing the Announcements profile
+            if (userId === 'b1ecb8f0-a758-4a6a-81ec-11742f994061') {
+                msgBtn.style.opacity = '0.4';
+                msgBtn.style.pointerEvents = 'none';
+                msgBtn.innerText = "Cannot DM Announcements";
+            } else {
+                msgBtn.style.opacity = '1';
+                msgBtn.style.pointerEvents = 'auto';
+                msgBtn.innerText = "Message";
+                msgBtn.onclick = () => { startDM(userId, username, safePfp); };
+            }
         }
 
         let top = event.clientY - 100;
@@ -855,7 +908,10 @@
             const isAdm = isAdmin(m.username, m.sender_id);
             const isNitro = m.isNitro || false;
             const uClass = getUserClass(m.username);
-            const isMeChannel = currentChannel === `dm-${myUUID}`;
+            const isAdmSelf = myUUID === 'b1ecb8f0-a758-4a6a-81ec-11742f994061';
+            
+            // Non-admins cannot reply in the #welcome channel
+            const canReply = !(currentChannel === 'welcome' && !isAdmSelf);
             
             let nameColor = isAdm ? '#ffcc00' : (isNitro ? '#00a8fc' : 'var(--text-normal)');
             let tags = (isAdm ? ' 👑' : '') + (isNitro ? ' <span class="nitro-tag">Nitro</span>' : '');
@@ -905,7 +961,7 @@
             </div>
             <div class="msg-actions">
                 <div class="action-btn">😀<div class="emoji-picker"><span onclick="addReaction('${m.id}', '👍')">👍</span><span onclick="addReaction('${m.id}', '👎')">👎</span><span onclick="addReaction('${m.id}', '❤️')">❤️</span><span onclick="addReaction('${m.id}', '💀')">💀</span><span onclick="addReaction('${m.id}', '😭')">😭</span><span onclick="addReaction('${m.id}', '👀')">👀</span><span onclick="addReaction('${m.id}', '😡')">😡</span></div></div>
-                ${isMeChannel ? '' : `<div class="action-btn" onclick="setReply('${m.id}', '${m.username}', '${content.replace(/'/g, "\\'")}')">↩️</div>`}
+                ${canReply ? `<div class="action-btn" onclick="setReply('${m.id}', '${m.username}', '${content.replace(/'/g, "\\'")}')">↩️</div>` : ''}
             </div>`;
             
             container.appendChild(row);
@@ -953,8 +1009,8 @@
             document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
             el.classList.add('active');
             currentChannel = el.dataset.channel;
-            document.getElementById('chat-input').placeholder = `Message #${currentChannel}`;
             
+            updateChatInputUI();
             localStorage.setItem(`read_${currentChannel}`, Date.now().toString());
             loadMessages();
         }
@@ -998,7 +1054,6 @@
     async function loadDMList() {
         if (!myUUID) return;
         
-        // Find all messages involving myUUID to parse the DM list & unread state
         const { data: dmMsgs } = await db.from('Messages')
             .select('channel, sender_id, created_at')
             .like('channel', `%${myUUID}%`);
@@ -1022,7 +1077,6 @@
             });
         }
 
-        // Unread checks for the badge on the Discord icon
         let hasUnread = false;
         for (let channel in latestMsgTime) {
             let lastRead = parseInt(localStorage.getItem(`read_${channel}`) || '0');
@@ -1031,20 +1085,24 @@
             }
         }
         
-        const meChannel = `dm-${myUUID}`;
-        const meMsgs = dmMsgs?.filter(m => m.channel === meChannel) || [];
-        if (meMsgs.length > 0) {
-            const meLatest = Math.max(...meMsgs.map(m => new Date(m.created_at).getTime()));
-            let meLastRead = parseInt(localStorage.getItem(`read_${meChannel}`) || '0');
-            if (meLatest > meLastRead && currentChannel !== meChannel) {
+        // Track unread for Announcements (#welcome)
+        const { data: welcomeMsgs } = await db.from('Messages').select('created_at').eq('channel', 'welcome').order('created_at', { ascending: false }).limit(1);
+        if (welcomeMsgs && welcomeMsgs.length > 0) {
+            const welcomeLatest = new Date(welcomeMsgs[0].created_at).getTime();
+            const welcomeLastRead = parseInt(localStorage.getItem('read_welcome') || '0');
+            if (welcomeLatest > welcomeLastRead && currentChannel !== 'welcome') {
+                const annUnread = document.getElementById('dm-announcements-unread');
+                if (annUnread) annUnread.style.display = 'block';
                 hasUnread = true;
+            } else {
+                const annUnread = document.getElementById('dm-announcements-unread');
+                if (annUnread) annUnread.style.display = 'none';
             }
         }
 
         const badge = document.getElementById('dm-unread-badge');
         if (badge) badge.style.display = hasUnread ? 'block' : 'none';
 
-        // Fetch user data for the list
         let dmAccounts = [];
         if (otherUUIDs.size > 0) {
             const { data: accs } = await db.from('Accounts').select('id, username, avatar_base64').in('id', Array.from(otherUUIDs));
@@ -1054,14 +1112,12 @@
         const container = document.getElementById('dm-list-container');
         let html = '';
         
-        // Render unsaved/temporary DMs from hitting the "Message" button
         tempDMs.forEach(u => {
             if (!otherUUIDs.has(u.id)) {
                 html += createDMItemHTML(u.id, u.username, u.pfp, false);
             }
         });
 
-        // Render saved DMs from the database
         dmAccounts.forEach(u => {
             const channel = getDMChannel(myUUID, u.id);
             const isUnread = (latestMsgTime[channel] > (parseInt(localStorage.getItem(`read_${channel}`) || '0'))) && currentChannel !== channel;
@@ -1093,7 +1149,6 @@
             lastUser = null; 
             lastTime = 0;
             
-            // Mark channel as read as soon as messages are loaded
             localStorage.setItem(`read_${currentChannel}`, Date.now().toString());
             
             let idToName = {};
@@ -1256,11 +1311,12 @@
         myPfpImg.src = myAvatar || 'https://via.placeholder.com/40';
         myPfpImg.className = `user-avatar avatar-${myUUID}`; 
         
-        // Dynamically style the "Me" channel using your exact tags!
-        const dmAvatar = document.getElementById('dm-me-avatar');
-        if(dmAvatar) dmAvatar.src = myAvatar || 'https://via.placeholder.com/40';
-        const dmName = document.getElementById('dm-me-name');
-        if(dmName) dmName.innerHTML = `<span style="color:${nameColor}">${myUsername}${extraTags}</span>`;
+        // Fetch Admin PFP for the Announcements icon
+        const { data: adminAcc } = await db.from('Accounts').select('avatar_base64').eq('id', 'b1ecb8f0-a758-4a6a-81ec-11742f994061').single();
+        if(adminAcc && adminAcc.avatar_base64) {
+            const annAvatar = document.getElementById('dm-announcements-avatar');
+            if (annAvatar) annAvatar.src = adminAcc.avatar_base64;
+        }
 
         const presence = db.channel('online_users', { config: { presence: { key: myUUID } } });
         presence.on('presence', { event: 'sync' }, () => {
@@ -1271,8 +1327,7 @@
 
         db.channel('msgs').on('postgres_changes', { event: '*', schema: 'public', table: 'Messages' }, (payload) => {
             if (payload.new.channel === currentChannel) loadMessages();
-            // Automatically refresh DM list/unread dots if the message involves you
-            if (payload.new.channel.includes(myUUID)) loadDMList();
+            if (payload.new.channel.includes(myUUID) || payload.new.channel === 'welcome') loadDMList();
         }).subscribe();
         
         db.channel('user_timeouts').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Timeouts', filter: `target_id=eq.${myUUID}` }, (payload) => {
@@ -1280,6 +1335,7 @@
             if (expiresAt > Date.now()) applyTimeoutUI(expiresAt);
         }).subscribe();
 
+        updateChatInputUI();
         loadMessages();
         loadDMList();
         checkTimeouts();
