@@ -362,8 +362,7 @@
         location.reload();
     }
 
-async function refreshMemberLists(presenceState) {
-        // Fetch all accounts. Added error logging so it doesn't fail silently!
+    async function refreshMemberLists(presenceState) {
         const { data: allAccounts, error } = await db.from('Accounts').select('*');
         if (error) {
             console.error("Database Error fetching accounts:", error);
@@ -380,17 +379,17 @@ async function refreshMemberLists(presenceState) {
         
         allAccounts.forEach(account => {
             const isOnline = onlineUUIDs.includes(account.id);
-            const isAdm = (account.username && account.username.trim().toLowerCase() === 'prime'); 
+            
+            // ADMIN CHECK: Now checks your exact UUID alongside the name
+            const isAdm = (account.id === 'b1ecb8f0-a758-4a6a-81ec-11742f994061' || (account.username && account.username.trim().toLowerCase() === 'prime')); 
             const isNitro = account.is_nitro || false;
 
-            // FIX: Using the exact column from Phase 1
             const safeAvatar = account.avatar_base64 || 'https://via.placeholder.com/40';
             livePfps[account.username] = safeAvatar;
 
             let nameColor = '#dbdee1';
             let extraTags = '';
 
-            // Admin strictly overrides Nitro
             if (isAdm) {
                 nameColor = '#ffcc00';
                 extraTags = ' 👑';
@@ -399,8 +398,9 @@ async function refreshMemberLists(presenceState) {
                 extraTags = '<span class="nitro-tag">Nitro</span>';
             }
 
+            // Notice how isAdm and isNitro are passed inside the onclick below
             const memberHTML = `
-                <div class="member-item ${isOnline ? '' : 'offline'}" onclick="showMiniProfile(event, '${account.username}')">
+                <div class="member-item ${isOnline ? '' : 'offline'}" onclick="showMiniProfile(event, '${account.username}', false, ${isAdm}, ${isNitro})">
                     <div class="member-avatar-wrapper">
                         <img src="${safeAvatar}" class="msg-pfp avatar-${account.id}" onerror="this.src='https://via.placeholder.com/40'">
                         ${isOnline ? '<div class="status-dot"></div>' : ''}
@@ -418,26 +418,38 @@ async function refreshMemberLists(presenceState) {
     // --- UI & UTILS ---
     function openLightbox(src) { document.getElementById('lightbox-img').src = src; document.getElementById('lightbox').style.display = 'flex'; }
     function closeMiniProfile() { document.getElementById('mp-overlay').style.display = 'none'; document.getElementById('mp-card').style.display = 'none'; }
-// Prevents the DOM element collision bug
     function openMyProfile(event) {
         event.stopPropagation();
-        document.getElementById('user-dropup').style.display = 'none'; // Close the menu
-        showMiniProfile(event, myUsername, true); // Safely pass the JS string
+        document.getElementById('user-dropup').style.display = 'none'; 
+        
+        // Use the globally saved nitro status and hardcoded UUID for self
+        const isAdmSelf = (myUUID === 'b1ecb8f0-a758-4a6a-81ec-11742f994061' || myUsername.trim().toLowerCase() === 'prime');
+        showMiniProfile(event, myUsername, true, isAdmSelf, window.myIsNitro || false);
     }
 
-    function showMiniProfile(event, username, isSelf = false) {
+    function showMiniProfile(event, username, isSelf = false, isAdm = false, isNitro = false) {
         const card = document.getElementById('mp-card');
         const overlay = document.getElementById('mp-overlay');
         
-        // Strict Admin Check
-        const isAdm = (username === 'Prime'); 
-        
-        // Grab the avatar from livePfps, or fallback to the local one, or a placeholder
-        const safePfp = livePfps[username] || myAvatar || 'https://via.placeholder.com/40';
+        const safePfp = livePfps[username] || (isSelf ? myAvatar : 'https://via.placeholder.com/40');
+
+        let nameColor = 'white';
+        let extraTags = '';
+        let hashContent = 'MEMBER';
+
+        // Fix the role text in the popup
+        if (isAdm) {
+            nameColor = '#ffcc00';
+            extraTags = ' 👑';
+            hashContent = 'ADMIN';
+        } else if (isNitro) {
+            nameColor = '#00a8fc';
+            hashContent = '<span class="nitro-tag" style="margin-left:0;">Nitro</span>';
+        }
 
         document.getElementById('mp-pfp').src = safePfp;
-        document.getElementById('mp-name').innerHTML = `<span style="color:${isAdm?'#ffcc00':'white'}">${username}${isAdm?' 👑':''}</span>`;
-        document.getElementById('mp-hash').innerText = isAdm ? 'ADMIN' : 'MEMBER';
+        document.getElementById('mp-name').innerHTML = `<span style="color:${nameColor}">${username}${extraTags}</span>`;
+        document.getElementById('mp-hash').innerHTML = hashContent;
 
         const logoutBtn = document.getElementById('mp-logout-btn');
         if (isSelf) {
@@ -450,19 +462,21 @@ async function refreshMemberLists(presenceState) {
             logoutBtn.style.display = 'none';
         }
 
-        let top = event.clientY - 100, left = event.clientX - 320; 
+        // POSITIONING FIX: Keep it inside the screen
+        let top = event.clientY - 100;
+        let left = event.clientX - 320; 
+        
+        // If clicking from the far left (like the dropup menu), pop it to the right instead
+        if (left < 10) left = event.clientX + 20; 
+        // If it goes off the bottom of the screen
+        if (top + 350 > window.innerHeight) top = window.innerHeight - 360; 
+        // If it goes off the top
         if (top < 10) top = 10;
-        card.style.top = top + 'px'; card.style.left = left + 'px';
-        overlay.style.display = 'block'; card.style.display = 'flex';
-    }
 
-    async function checkTimeouts() {
-        const { data } = await db.from('Timeouts').select('expires_at').eq('target_user', myUsername).order('expires_at', { ascending: false }).limit(1);
-        if (data && data.length > 0) {
-            const expiresAt = new Date(data[0].expires_at).getTime();
-            if (expiresAt > Date.now()) { applyTimeoutUI(expiresAt); return; }
-        }
-        clearTimeoutUI();
+        card.style.top = top + 'px'; 
+        card.style.left = left + 'px';
+        overlay.style.display = 'block'; 
+        card.style.display = 'flex';
     }
     
     function applyTimeoutUI(expiresAt) {
