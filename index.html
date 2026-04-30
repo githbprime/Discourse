@@ -105,9 +105,38 @@
         .status-dot { position: absolute; bottom: -2px; right: -2px; width: 10px; height: 10px; background: #23a559; border-radius: 50%; border: 2px solid #2b2d31; } 
         .status-dot.offline { background: #80848e; } /* Grey dot */
 
-        /* OVERLAYS & MODALS */
-        #signup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 2000; }
-        .signup-card { background: #313338; padding: 32px; border-radius: 8px; width: 340px; text-align: center; }
+        /* NEW AUTH MODAL STYLES */
+        #auth-overlay { 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(0,0,0,0.9); 
+            display: none; /* JS will change this to flex */
+            justify-content: center; 
+            align-items: center; 
+            z-index: 2000; 
+        }
+        .auth-card { 
+            background: #313338; 
+            padding: 32px; 
+            border-radius: 8px; 
+            width: 340px; 
+            text-align: center; 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .auth-input {
+            width: 100%; 
+            padding: 10px; 
+            margin-bottom: 10px; 
+            background: #1e1f22; 
+            border: 1px solid #1e1f22; 
+            color: white; 
+            border-radius: 4px; 
+            box-sizing: border-box; 
+            outline: none;
+        }
+        .auth-input:focus {
+            border-color: #5865f2;
+        }
         
         #lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 3000; display: none; justify-content: center; align-items: center; cursor: zoom-out; }
         #lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 4px; object-fit: contain; }
@@ -135,8 +164,8 @@
     </div>
 </div>
 
-<div id="auth-overlay" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 2000;">
-    <div class="signup-card">
+<div id="auth-overlay">
+    <div class="auth-card">
         <h2 style="color:white; margin-top:0;" id="auth-title">Welcome Back</h2>
         
         <div id="auth-pfp-section" style="display:none; justify-content:center; gap:16px; margin-bottom:20px; align-items:center;">
@@ -150,10 +179,10 @@
             </div>
         </div>
 
-        <input type="text" id="auth-username" placeholder="Username" style="width:100%; padding:10px; margin-bottom:10px; background:#1e1f22; border:none; color:white; border-radius:4px; box-sizing:border-box; outline:none;">
-        <input type="password" id="auth-password" placeholder="Password" style="width:100%; padding:10px; margin-bottom:20px; background:#1e1f22; border:none; color:white; border-radius:4px; box-sizing:border-box; outline:none;">
+        <input type="text" id="auth-username" class="auth-input" placeholder="Username">
+        <input type="password" id="auth-password" class="auth-input" placeholder="Password">
         
-        <button id="auth-submit-btn" onclick="handleAuth()" style="width:100%; padding:12px; background:#5865f2; border:none; color:white; border-radius:4px; font-weight:bold; cursor:pointer; transition: 0.2s;">Log In</button>
+        <button id="auth-submit-btn" onclick="handleAuth()" style="width:100%; padding:12px; background:#5865f2; border:none; color:white; border-radius:4px; font-weight:bold; cursor:pointer;">Log In</button>
         
         <div style="color:#b5bac1; font-size:13px; margin-top:16px;">
             <span id="auth-toggle-text">Need an account?</span> 
@@ -626,38 +655,73 @@
         location.reload(); 
     }
 
-    async function initApp() {
-        if (!myUUID || !myUsername) { document.getElementById('auth-overlay').style.display = 'flex'; return; }
+async function initApp() {
+        // 1. Auth Guard: If no UUID, show the login overlay and stop
+        if (!myUUID || !myUsername) { 
+            document.getElementById('auth-overlay').style.display = 'flex'; 
+            return; 
+        }
 
-        const isMeAdmin = isAdmin(myUsername);
-        document.getElementById('my-name').innerHTML = `<span style="color:${isMeAdmin?'#ffcc00':'white'}">${myUsername.split('#')[0]}${isMeAdmin?' 👑':''}</span>`;
-        document.getElementById('my-hash').innerText = '#' + (myUsername.split('#')[1] || '0000');
+        // 2. Fetch latest Account details (to check Nitro/Admin status)
+        const { data: account } = await db.from('Accounts')
+            .select('is_nitro')
+            .eq('id', myUUID)
+            .single();
+
+        const isNitro = account?.is_nitro || false;
+        
+        // 3. Update Sidebar UI
+        // We use the yellow crown for Nitro/Admin users as per your plan
+        document.getElementById('my-name').innerHTML = `
+            <span style="color:${isNitro ? '#ffcc00' : 'white'}">
+                ${myUsername}${isNitro ? ' 👑' : ''}
+            </span>
+        `;
+        // Since we are moving away from #tags, we'll label it "Member" or "Nitro"
+        document.getElementById('my-hash').innerText = isNitro ? 'NITRO' : 'MEMBER';
+        document.getElementById('my-hash').style.color = isNitro ? '#00a8fc' : '#b5bac1';
         
         const myPfpImg = document.getElementById('my-pfp');
         myPfpImg.src = myAvatar;
-        myPfpImg.className = getUserClass(myUsername); // This makes sure the update loop finds it
+        // This class is used by your update loop to find your own avatar in the chat
+        myPfpImg.className = `msg-pfp avatar-${myUUID}`; 
         
-        await db.from('Users').upsert({ username: myUsername, avatar_url: myAvatar });
-        
-        // Presence Setup
-        const presence = db.channel('online_users', { config: { presence: { key: myUsername } } });
+        // 4. Presence Setup (Tracking by UUID now, not just name)
+        const presence = db.channel('online_users', { config: { presence: { key: myUUID } } });
         presence.on('presence', { event: 'sync' }, () => {
             refreshMemberLists(presence.presenceState());
         }).subscribe(async (status) => {
-            if (status === 'SUBSCRIBED') await presence.track({ pfp: myAvatar });
+            if (status === 'SUBSCRIBED') {
+                await presence.track({ 
+                    username: myUsername, 
+                    pfp: myAvatar,
+                    isNitro: isNitro 
+                });
+            }
         });
 
-        // Realtime Listeners
-        db.channel('msgs').on('postgres_changes', { event: '*', schema: 'public', table: 'Messages' }, () => loadMessages()).subscribe();
+        // 5. Realtime Listeners
+        // New Messages Listener
+        db.channel('msgs').on('postgres_changes', { 
+            event: '*', 
+            schema: 'public', 
+            table: 'Messages' 
+        }, () => loadMessages()).subscribe();
         
-        // Realtime Timeout Listener
-        db.channel('timeouts').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Timeouts', filter: `target_user=eq.${myUsername}` }, (payload) => {
+        // New Timeout Listener (Filter now uses your unique target_id)
+        db.channel('user_timeouts').on('postgres_changes', { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'Timeouts', 
+            filter: `target_id=eq.${myUUID}` 
+        }, (payload) => {
             const expiresAt = new Date(payload.new.expires_at).getTime();
             if (expiresAt > Date.now()) {
                 applyTimeoutUI(expiresAt);
             }
         }).subscribe();
 
+        // 6. Initial Load
         loadMessages();
         checkTimeouts();
     }
