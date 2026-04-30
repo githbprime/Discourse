@@ -362,8 +362,13 @@
         location.reload();
     }
 
-    async function refreshMemberLists(presenceState) {
-        const { data: allAccounts } = await db.from('Accounts').select('*');
+async function refreshMemberLists(presenceState) {
+        // Fetch all accounts. Added error logging so it doesn't fail silently!
+        const { data: allAccounts, error } = await db.from('Accounts').select('*');
+        if (error) {
+            console.error("Database Error fetching accounts:", error);
+            return;
+        }
         if (!allAccounts) return;
 
         const onlineUUIDs = Object.keys(presenceState);
@@ -375,17 +380,17 @@
         
         allAccounts.forEach(account => {
             const isOnline = onlineUUIDs.includes(account.id);
-            const isAdm = (account.username === 'Prime'); // STRICT ADMIN CHECK
+            const isAdm = (account.username && account.username.trim().toLowerCase() === 'prime'); 
             const isNitro = account.is_nitro || false;
 
-            // Failsafe for broken avatars
-            const safeAvatar = account.avatar_url || 'https://via.placeholder.com/40';
+            // FIX: Using the exact column from Phase 1
+            const safeAvatar = account.avatar_base64 || 'https://via.placeholder.com/40';
             livePfps[account.username] = safeAvatar;
 
             let nameColor = '#dbdee1';
             let extraTags = '';
 
-            // PRIORITY CHECK: Admin completely overrides Nitro
+            // Admin strictly overrides Nitro
             if (isAdm) {
                 nameColor = '#ffcc00';
                 extraTags = ' 👑';
@@ -408,10 +413,8 @@
         });
 
         document.getElementById('online-count').innerText = onlineUUIDs.length;
-        // If you want offline count:
-        // document.getElementById('offline-count').innerText = allAccounts.length - onlineUUIDs.length;
     }
-
+    
     // --- UI & UTILS ---
     function openLightbox(src) { document.getElementById('lightbox-img').src = src; document.getElementById('lightbox').style.display = 'flex'; }
     function closeMiniProfile() { document.getElementById('mp-overlay').style.display = 'none'; document.getElementById('mp-card').style.display = 'none'; }
@@ -750,23 +753,32 @@
         location.reload(); 
     }
 
-async function initApp() {
-        // 1. Auth Guard: If no UUID, show the login overlay and stop
+    async function initApp() {
+        // 1. Auth Guard
         if (!myUUID || !myUsername) { 
             document.getElementById('auth-overlay').style.display = 'flex'; 
             return; 
         }
 
-        // 2. Fetch latest Account details (to check Nitro/Admin status)
-        const { data: account } = await db.from('Accounts')
+        // Failsafe: If myUUID somehow has a '#' in it, it's a legacy account. Wipe it and restart.
+        if (myUUID.includes('#')) {
+            localStorage.clear();
+            location.reload();
+            return;
+        }
+
+        // 2. Fetch latest Account details
+        const { data: account, error: accErr } = await db.from('Accounts')
             .select('is_nitro')
             .eq('id', myUUID)
             .single();
 
+        if (accErr) console.error("Error fetching my account:", accErr);
+
         const isNitro = account?.is_nitro || false;
         
-         // 3. Update Sidebar UI
-        const isAdm = (myUsername === 'Prime'); // Strict check
+        // 3. Update Sidebar UI
+        const isAdm = (myUsername && myUsername.trim().toLowerCase() === 'prime'); 
         let nameColor = '#dbdee1';
         let extraTags = '';
         let hashContent = 'MEMBER';
@@ -779,22 +791,19 @@ async function initApp() {
         } else if (isNitro) {
             nameColor = '#00a8fc';
             extraTags = '<span class="nitro-tag">Nitro</span>';
+            document.getElementById('my-hash').style.color = '#dbdee1'; 
             hashContent = '<span class="nitro-tag" style="margin-left:0;">Nitro</span>';
         }
 
+        // Apply everything to the DOM
         document.getElementById('my-name').innerHTML = `<span style="color:${nameColor}">${myUsername}${extraTags}</span>`;
         document.getElementById('my-hash').innerHTML = hashContent;
         
         const myPfpImg = document.getElementById('my-pfp');
-        myPfpImg.src = myAvatar;
-        myPfpImg.className = `msg-pfp avatar-${myUUID}`;
+        myPfpImg.src = myAvatar || 'https://via.placeholder.com/40';
+        myPfpImg.className = `user-avatar avatar-${myUUID}`; 
         
-        const myPfpImg = document.getElementById('my-pfp');
-        myPfpImg.src = myAvatar;
-        // This class is used by your update loop to find your own avatar in the chat
-        myPfpImg.className = `msg-pfp avatar-${myUUID}`; 
-        
-        // 4. Presence Setup (Tracking by UUID now, not just name)
+        // 4. Presence Setup
         const presence = db.channel('online_users', { config: { presence: { key: myUUID } } });
         presence.on('presence', { event: 'sync' }, () => {
             refreshMemberLists(presence.presenceState());
@@ -809,14 +818,8 @@ async function initApp() {
         });
 
         // 5. Realtime Listeners
-        // New Messages Listener
-        db.channel('msgs').on('postgres_changes', { 
-            event: '*', 
-            schema: 'public', 
-            table: 'Messages' 
-        }, () => loadMessages()).subscribe();
+        db.channel('msgs').on('postgres_changes', { event: '*', schema: 'public', table: 'Messages' }, () => loadMessages()).subscribe();
         
-        // New Timeout Listener (Filter now uses your unique target_id)
         db.channel('user_timeouts').on('postgres_changes', { 
             event: 'INSERT', 
             schema: 'public', 
@@ -824,9 +827,7 @@ async function initApp() {
             filter: `target_id=eq.${myUUID}` 
         }, (payload) => {
             const expiresAt = new Date(payload.new.expires_at).getTime();
-            if (expiresAt > Date.now()) {
-                applyTimeoutUI(expiresAt);
-            }
+            if (expiresAt > Date.now()) applyTimeoutUI(expiresAt);
         }).subscribe();
 
         // 6. Initial Load
