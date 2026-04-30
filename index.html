@@ -135,11 +135,12 @@
     </div>
 </div>
 
-<div id="signup-overlay">
+<div id="auth-overlay" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 2000;">
     <div class="signup-card">
-        <h2 style="color:white" id="modal-title">Set Up Profile</h2>
-        <div style="display:flex; justify-content:center; gap:16px; margin-bottom:20px; align-items:center;">
-            <img id="modal-avatar" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid #1e1f22;">
+        <h2 style="color:white; margin-top:0;" id="auth-title">Welcome Back</h2>
+        
+        <div id="auth-pfp-section" style="display:none; justify-content:center; gap:16px; margin-bottom:20px; align-items:center;">
+            <img id="modal-avatar" src="https://api.dicebear.com/7.x/pixel-art/svg?seed=Prime" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid #1e1f22;">
             <div style="display:flex; flex-direction:column; gap:8px;">
                 <button onclick="document.getElementById('modal-avatar').src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${Math.random()}`" style="padding:6px 12px; background:#4e5058; color:white; border:none; border-radius:4px; cursor:pointer;">🎲 Randomize</button>
                 <label style="padding:6px 12px; background:#2b2d31; color:white; border:none; border-radius:4px; cursor:pointer; font-size:13px;">
@@ -148,9 +149,16 @@
                 </label>
             </div>
         </div>
-        <input type="text" id="modal-username" placeholder="Username (e.g. prime)" style="width:100%; padding:10px; margin-bottom:20px; background:#1e1f22; border:none; color:white; border-radius:4px; box-sizing:border-box;">
-        <button onclick="saveProfile()" style="width:100%; padding:12px; background:#5865f2; border:none; color:white; border-radius:4px; font-weight:bold; cursor:pointer;">Save</button>
-        <div id="cancel-profile-btn" onclick="document.getElementById('signup-overlay').style.display='none'" style="display:none; color:#949ba4; margin-top:15px; cursor:pointer; font-size:13px;">Cancel</div>
+
+        <input type="text" id="auth-username" placeholder="Username" style="width:100%; padding:10px; margin-bottom:10px; background:#1e1f22; border:none; color:white; border-radius:4px; box-sizing:border-box; outline:none;">
+        <input type="password" id="auth-password" placeholder="Password" style="width:100%; padding:10px; margin-bottom:20px; background:#1e1f22; border:none; color:white; border-radius:4px; box-sizing:border-box; outline:none;">
+        
+        <button id="auth-submit-btn" onclick="handleAuth()" style="width:100%; padding:12px; background:#5865f2; border:none; color:white; border-radius:4px; font-weight:bold; cursor:pointer; transition: 0.2s;">Log In</button>
+        
+        <div style="color:#b5bac1; font-size:13px; margin-top:16px;">
+            <span id="auth-toggle-text">Need an account?</span> 
+            <span onclick="toggleAuthMode()" style="color:#00a8fc; cursor:pointer; font-weight:bold; margin-left:4px;">Sign Up</span>
+        </div>
     </div>
 </div>
 
@@ -221,6 +229,11 @@
     let lastTime = 0;
     let timeoutInterval = null;
     let livePfps = {}; 
+
+    let myUUID = localStorage.getItem('primeUUID');
+    let myUsername = localStorage.getItem('primeUsername');
+    let myAvatar = localStorage.getItem('primeAvatar');
+    let isSignUpMode = false;
 
     function isAdmin(username) {
         return username === 'githbprime#3951' || username === 'primealt#9047';
@@ -551,30 +564,71 @@
         if (data) data.forEach(m => renderMessage(m, true));
     }
 
-    function openModal(isEdit = false) {
-        document.getElementById('signup-overlay').style.display = 'flex';
-        if (isEdit && myUsername) {
-            document.getElementById('modal-username').value = myUsername.split('#')[0];
-            document.getElementById('modal-avatar').src = myAvatar;
-            document.getElementById('cancel-profile-btn').style.display = 'block';
+    function toggleAuthMode() {
+        isSignUpMode = !isSignUpMode;
+        document.getElementById('auth-title').innerText = isSignUpMode ? "Create an Account" : "Welcome Back";
+        document.getElementById('auth-submit-btn').innerText = isSignUpMode ? "Sign Up" : "Log In";
+        document.getElementById('auth-toggle-text').innerText = isSignUpMode ? "Already have an account?" : "Need an account?";
+        document.getElementById('auth-pfp-section').style.display = isSignUpMode ? "flex" : "none";
+        document.querySelector('[onclick="toggleAuthMode()"]').innerText = isSignUpMode ? "Log In" : "Sign Up";
+    }
+
+    async function hashPassword(password) {
+        const msgBuffer = new TextEncoder().encode(password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function handleAuth() {
+        const u = document.getElementById('auth-username').value.trim();
+        const p = document.getElementById('auth-password').value;
+    
+        if (!u || !p) return alert("Please fill in both fields.");
+        if (u.includes('#')) return alert("Usernames can no longer contain '#' tags.");
+
+        const hashedP = await hashPassword(p);
+
+        if (isSignUpMode) {
+            const avatar = document.getElementById('modal-avatar').src;
+        
+            const { data, error } = await db.from('Accounts').insert([{
+                username: u,
+                password_hash: hashedP,
+                avatar_base64: avatar
+            }]).select('id, username, avatar_base64').single();
+
+            if (error) {
+            // Error code 23505 is PostgreSQL for "Unique Constraint Violation"
+                if (error.code === '23505') return alert("That username is already taken!");
+                return alert("Error: " + error.message);
+            }
+        
+            saveLocalAuth(data.id, data.username, data.avatar_base64);
+        
+        } else {
+            const { data, error } = await db.from('Accounts')
+                .select('id, username, avatar_base64, password_hash')
+                .eq('username', u)
+                .single();
+
+            if (error || !data) return alert("Account not found. Check your username.");
+            if (data.password_hash !== hashedP) return alert("Incorrect password.");
+
+            saveLocalAuth(data.id, data.username, data.avatar_base64);
         }
     }
 
-    async function saveProfile() {
-        const u = document.getElementById('modal-username').value.trim();
-        if(!u) return;
-        myUsername = u + "#" + (myUsername ? myUsername.split('#')[1] : Math.floor(1000+Math.random()*9000));
-        myAvatar = document.getElementById('modal-avatar').src;
-        localStorage.setItem('discordGuestName', myUsername);
-        localStorage.setItem('discordGuestPfp', myAvatar);
-        await db.from('Users').upsert({ username: myUsername, avatar_url: myAvatar });
-        location.reload();
+    function saveLocalAuth(id, username, avatar) {
+        localStorage.setItem('primeUUID', id);
+        localStorage.setItem('primeUsername', username);
+        localStorage.setItem('primeAvatar', avatar);
+        location.reload(); 
     }
 
     async function initApp() {
-        if (!myUsername) { openModal(false); return; }
+        if (!myUUID || !myUsername) { document.getElementById('auth-overlay').style.display = 'flex'; return; }
 
-        // Load Basic Profile UI
         const isMeAdmin = isAdmin(myUsername);
         document.getElementById('my-name').innerHTML = `<span style="color:${isMeAdmin?'#ffcc00':'white'}">${myUsername.split('#')[0]}${isMeAdmin?' 👑':''}</span>`;
         document.getElementById('my-hash').innerText = '#' + (myUsername.split('#')[1] || '0000');
