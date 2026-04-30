@@ -551,51 +551,72 @@
     }
 
     function renderMessage(m, appendOnly = false) {
-        const container = document.getElementById('message-container');
-        const isFirst = (m.username !== lastUser || (new Date(m.created_at) - lastTime) > 300000);
-        const isAdm = isAdmin(m.username);
-        const uClass = getUserClass(m.username);
-        let content = m.content || "";
-        let replyHtml = '';
-        if (content.startsWith('{"_reply"')) {
-            try {
-                const p = JSON.parse(content); content = p.content;
-                replyHtml = `<div class="reply-line"><img class="rt-pfp ${getUserClass(p._reply.name)}" src="${p._reply.pfp}"><strong>${p._reply.name}</strong>: ${p._reply.text}</div>`;
-            } catch(e){}
-        }
-        let imgSrc = null;
-        if (content.includes('[IMG]')) { const parts = content.split('[IMG]'); content = parts[0]; imgSrc = parts[1]; }
-        const row = document.createElement('div');
-        row.className = `msg-row ${isFirst || replyHtml ? 'first' : ''}`;
-        let reactHtml = '<div class="react-bar">';
-        if (m.reactions) {
-            for (let [emoji, users] of Object.entries(m.reactions)) {
-                let tooltips = users.map(u => `<div class="rt-user"><img class="rt-pfp ${getUserClass(u)}" src="${getPfp(u)}"> ${u}</div>`).join('');
-                reactHtml += `<div class="react-pill ${users.includes(myUsername)?'active':''}" onclick="addReaction('${m.id}', '${emoji}')">${emoji} ${users.length}<div class="react-tooltip">${tooltips}</div></div>`;
+        try {
+            const container = document.getElementById('message-container');
+            const isFirst = (m.username !== lastUser || (new Date(m.created_at) - lastTime) > 300000);
+            
+            // Safely check Admin status
+            const isAdm = isAdmin(m.username, m.sender_id);
+            const uClass = getUserClass(m.username);
+            
+            let content = m.content || "";
+            let replyHtml = '';
+            
+            if (content.startsWith('{"_reply"')) {
+                try {
+                    const p = JSON.parse(content); content = p.content;
+                    replyHtml = `<div class="reply-line"><img class="rt-pfp ${getUserClass(p._reply.name)}" src="${p._reply.pfp}"><strong>${p._reply.name}</strong>: ${p._reply.text}</div>`;
+                } catch(e){}
             }
+            
+            let imgSrc = null;
+            if (content.includes('[IMG]')) { 
+                const parts = content.split('[IMG]'); 
+                content = parts[0]; 
+                imgSrc = parts[1]; 
+            }
+            
+            const row = document.createElement('div');
+            row.className = `msg-row ${isFirst || replyHtml ? 'first' : ''}`;
+            
+            // Safely parse Reactions so null data doesn't crash the loop
+            let reactHtml = '<div class="react-bar">';
+            if (m.reactions && typeof m.reactions === 'object' && Object.keys(m.reactions).length > 0) {
+                for (let [emoji, users] of Object.entries(m.reactions)) {
+                    if (Array.isArray(users)) {
+                        let tooltips = users.map(u => `<div class="rt-user"><img class="rt-pfp ${getUserClass(u)}" src="${getPfp(u)}"> ${u}</div>`).join('');
+                        reactHtml += `<div class="react-pill ${users.includes(myUsername)?'active':''}" onclick="addReaction('${m.id}', '${emoji}')">${emoji} ${users.length}<div class="react-tooltip">${tooltips}</div></div>`;
+                    }
+                }
+            }
+            reactHtml += '</div>';
+            
+            row.innerHTML = `${replyHtml}
+            <div class="msg-flex">
+                <div class="avatar-col">
+                    ${(isFirst || replyHtml) ? `<img src="${getPfp(m.username)}" class="msg-pfp ${uClass}" onclick="showMiniProfile(event, '${m.username}')">` : ''}
+                </div>
+                <div class="content-col">
+                    ${(isFirst || replyHtml) ? `<div class="msg-header"><span class="username" style="color:${isAdm ? '#ffcc00' : ''}" onclick="showMiniProfile(event, '${m.username}')">${m.username}${isAdm ? ' 👑' : ''}</span><span class="timestamp">${new Date(m.created_at).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>` : ''}
+                    <div class="msg-text">${content}</div>
+                    ${imgSrc ? `<img src="${imgSrc}" class="chat-img" onclick="openLightbox(this.src)">` : ''}
+                    ${reactHtml === '<div class="react-bar"></div>' ? '' : reactHtml}
+                </div>
+            </div>
+            <div class="msg-actions">
+                <div class="action-btn">😀<div class="emoji-picker"><span onclick="addReaction('${m.id}', '👍')">👍</span><span onclick="addReaction('${m.id}', '👎')">👎</span><span onclick="addReaction('${m.id}', '❤️')">❤️</span><span onclick="addReaction('${m.id}', '💀')">💀</span><span onclick="addReaction('${m.id}', '😭')">😭</span><span onclick="addReaction('${m.id}', '👀')">👀</span><span onclick="addReaction('${m.id}', '😡')">😡</span></div></div>
+                <div class="action-btn" onclick="setReply('${m.id}', '${m.username}', '${content.replace(/'/g, "\\'")}')">↩️</div>
+            </div>`;
+            
+            container.appendChild(row);
+            if (appendOnly) container.scrollTop = container.scrollHeight;
+            
+            lastUser = m.username; 
+            lastTime = new Date(m.created_at);
+            
+        } catch (err) {
+            console.error("renderMessage crashed while drawing:", m, err);
         }
-        reactHtml += '</div>';
-        
-        row.innerHTML = `${replyHtml}
-        <div class="msg-flex">
-            <div class="avatar-col">
-                ${(isFirst || replyHtml) ? `<img src="${getPfp(m.username)}" class="msg-pfp ${uClass}" onclick="showMiniProfile(event, '${m.username}')">` : ''}
-            </div>
-            <div class="content-col">
-                ${(isFirst || replyHtml) ? `<div class="msg-header"><span class="username" style="color:${isAdm ? '#ffcc00' : ''}" onclick="showMiniProfile(event, '${m.username}')">${m.username}${isAdm ? ' 👑' : ''}</span><span class="timestamp">${new Date(m.created_at).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>` : ''}
-                <div class="msg-text">${content}</div>
-                ${imgSrc ? `<img src="${imgSrc}" class="chat-img" onclick="openLightbox(this.src)">` : ''}
-                ${reactHtml === '<div class="react-bar"></div>' ? '' : reactHtml}
-            </div>
-        </div>
-        <div class="msg-actions">
-            <div class="action-btn">😀<div class="emoji-picker"><span onclick="addReaction('${m.id}', '👍')">👍</span><span onclick="addReaction('${m.id}', '👎')">👎</span><span onclick="addReaction('${m.id}', '❤️')">❤️</span><span onclick="addReaction('${m.id}', '💀')">💀</span><span onclick="addReaction('${m.id}', '😭')">😭</span><span onclick="addReaction('${m.id}', '👀')">👀</span><span onclick="addReaction('${m.id}', '😡')">😡</span></div></div>
-            <div class="action-btn" onclick="setReply('${m.id}', '${m.username}', '${content.replace(/'/g, "\\'")}')">↩️</div>
-        </div>`;
-        
-        container.appendChild(row);
-        if (appendOnly) container.scrollTop = container.scrollHeight;
-        lastUser = m.username; lastTime = new Date(m.created_at);
     }
 
     // FIXED SEND MESSAGE
@@ -663,10 +684,39 @@
     };
 
     async function loadMessages() {
-        const container = document.getElementById('message-container');
-        container.innerHTML = ''; lastUser = null; lastTime = 0;
-        const { data } = await db.from('Messages').select('*').eq('channel', currentChannel).order('created_at', { ascending: true });
-        if (data) data.forEach(m => renderMessage(m, true));
+        try {
+            const container = document.getElementById('message-container');
+            
+            // Fetch messages
+            const { data: msgs, error: msgErr } = await db.from('Messages').select('*').eq('channel', currentChannel).order('created_at', { ascending: true });
+            if (msgErr) throw new Error("Database error loading messages: " + msgErr.message);
+
+            // Fetch accounts to map sender_id back to username
+            const { data: accounts, error: accErr } = await db.from('Accounts').select('id, username');
+            if (accErr) throw new Error("Database error loading accounts: " + accErr.message);
+
+            // Clear chat window
+            container.innerHTML = ''; 
+            lastUser = null; 
+            lastTime = 0;
+            
+            let idToName = {};
+            if (accounts) accounts.forEach(acc => idToName[acc.id] = acc.username);
+
+            if (msgs && msgs.length > 0) {
+                msgs.forEach(m => {
+                    // Map the hidden UUID back to the real username for the UI
+                    m.username = idToName[m.sender_id] || "Unknown User";
+                    renderMessage(m, true);
+                });
+                // Ensure chat scrolls to the bottom
+                container.scrollTop = container.scrollHeight;
+            } else {
+                container.innerHTML = '<div style="padding:20px; color:#b5bac1; text-align:center;">No messages here yet. Be the first to say hi!</div>';
+            }
+        } catch (err) {
+            console.error("loadMessages failed:", err);
+        }
     }
 
     // --- AUTH LOGIC ---
