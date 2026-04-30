@@ -116,7 +116,8 @@
         .server-icon:hover, .server-icon.active { border-radius: 15px; background: var(--brand); color: white; }
         .server-icon img { width: 28px; height: 28px; filter: brightness(0) invert(1); }
 
-        .channel-bar { width: 240px; background: var(--bg-secondary); display: flex; flex-direction: column; flex-shrink: 0; }
+        /* The channel bar MUST be relative so the dropup can position over the user panel perfectly */
+        .channel-bar { width: 240px; background: var(--bg-secondary); display: flex; flex-direction: column; flex-shrink: 0; position: relative; }
         .channel-header { padding: 16px; font-weight: bold; color: var(--text-normal); border-bottom: 1px solid rgba(0,0,0,0.1); }
         .channel-list { padding: 8px; flex-grow: 1; overflow-y: auto; }
         .channel-item { padding: 8px 12px; border-radius: 4px; color: var(--text-muted); cursor: pointer; margin-bottom: 2px; display: flex; align-items: center; }
@@ -133,12 +134,15 @@
         .user-hash { font-size: 11px; color: var(--text-muted); }
 
         .user-dropup {
-            position: absolute; bottom: 60px; left: 10px; width: 220px;
+            position: absolute; bottom: 60px; left: 10px; width: 220px; box-sizing: border-box;
             background: var(--bg-tertiary); border-radius: 8px; padding: 8px;
             display: none; flex-direction: column; gap: 4px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); z-index: 1000;
+            border: 1px solid var(--bg-primary);
         }
         .dropup-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; color: var(--text-normal); }
         .dropup-item:hover { background: var(--brand); color: white; }
+        .dropup-icon { width: 18px; height: 18px; filter: brightness(0) invert(1); }
+        body.mode-light .dropup-icon { filter: brightness(0) invert(0.3); }
 
         /* CHAT AREA (FULLY RESTORED) */
         .chat-area { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg-primary); }
@@ -298,14 +302,14 @@
         <div id="sidebar-dm" style="display:none;">
             <div class="channel-header">Direct Messages</div>
             <div class="channel-list">
-                <div class="channel-item dm-item">
+                <div class="channel-item dm-item" data-channel="dm-friend">
                     <img src="https://api.dicebear.com/7.x/pixel-art/svg?seed=Friend" class="dm-avatar">
                     <span>Friend 1</span>
                 </div>
                 <div style="padding: 10px; color: var(--text-muted); font-size: 11px; font-weight: bold; text-transform: uppercase;">Direct Messages</div>
-                <div class="channel-item dm-item active">
-                    <img src="https://api.dicebear.com/7.x/pixel-art/svg?seed=System" class="dm-avatar">
-                    <span>System Log</span>
+                <div class="channel-item dm-item active" data-channel="dm-me">
+                    <img src="" class="dm-avatar" id="dm-me-avatar">
+                    <span>Me</span>
                 </div>
             </div>
         </div>
@@ -386,7 +390,7 @@
                                 <div class="avatar-overlay">CHANGE PFP</div>
                             </div>
                             <div style="margin-left: 15px; padding-bottom: 5px;">
-                                <h3 id="settings-username-display" style="color:white; margin:0;">Username</h3>
+                                <h3 id="settings-username-display" style="color:var(--text-normal); margin:0;">Username</h3>
                             </div>
                         </div>
                         <div class="profile-body-inner">
@@ -499,12 +503,17 @@
         document.getElementById('icon-dm').classList.toggle('active', isDM);
         document.getElementById('icon-prime').classList.toggle('active', !isDM);
         
-        const container = document.getElementById('message-container');
+        document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
         if (isDM) {
-            container.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted);"><h3>Welcome to your DMs</h3>Start a conversation with a friend! (Phase 3)</div>';
+            document.querySelector('[data-channel="dm-me"]').classList.add('active');
+            currentChannel = `dm-${myUUID}`;
+            document.getElementById('chat-input').placeholder = `Message @Me`;
         } else {
-            loadMessages();
+            document.querySelector('[data-channel="welcome"]').classList.add('active');
+            currentChannel = 'welcome';
+            document.getElementById('chat-input').placeholder = `Message #welcome`;
         }
+        loadMessages();
     }
 
     function toggleUserMenu(event) {
@@ -591,6 +600,7 @@
                     localStorage.setItem('primeAvatar', tempPfpBase64);
                     myAvatar = tempPfpBase64;
                     document.getElementById('my-pfp').src = myAvatar;
+                    document.getElementById('dm-me-avatar').src = myAvatar;
                 }
                 document.getElementById('edit-password').value = '';
                 alert("Account Updated Successfully!");
@@ -891,6 +901,26 @@
         }
     }
 
+    document.querySelectorAll('.channel-item').forEach(el => {
+        el.onclick = () => {
+            document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            
+            const target = el.dataset.channel;
+            if (target === 'dm-me') {
+                currentChannel = `dm-${myUUID}`;
+                document.getElementById('chat-input').placeholder = `Message @Me`;
+            } else if (target === 'dm-friend') {
+                currentChannel = 'dm-friend';
+                document.getElementById('chat-input').placeholder = `Message @Friend 1`;
+            } else {
+                currentChannel = target;
+                document.getElementById('chat-input').placeholder = `Message #${currentChannel}`;
+            }
+            loadMessages();
+        }
+    });
+
     document.getElementById('chat-input').onkeypress = async (e) => { 
         if(e.key === 'Enter') {
             const val = e.target.value.trim();
@@ -1098,6 +1128,9 @@
         myPfpImg.src = myAvatar || 'https://via.placeholder.com/40';
         myPfpImg.className = `user-avatar avatar-${myUUID}`; 
         
+        const dmAvatar = document.getElementById('dm-me-avatar');
+        if(dmAvatar) dmAvatar.src = myAvatar || 'https://via.placeholder.com/40';
+
         const presence = db.channel('online_users', { config: { presence: { key: myUUID } } });
         presence.on('presence', { event: 'sync' }, () => {
             refreshMemberLists(presence.presenceState());
@@ -1115,17 +1148,6 @@
         loadMessages();
         checkTimeouts();
     }
-
-    document.querySelectorAll('.channel-item').forEach(el => {
-        el.onclick = () => {
-            if(el.classList.contains('dm-item')) return; // handled separately
-            document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
-            el.classList.add('active');
-            currentChannel = el.dataset.channel;
-            document.getElementById('chat-input').placeholder = `Message #${currentChannel}`;
-            loadMessages();
-        }
-    });
 
     initApp();
 </script>
