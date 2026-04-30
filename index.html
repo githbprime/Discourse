@@ -117,7 +117,7 @@
         .server-bar { width: 72px; background: var(--bg-tertiary); display: flex; flex-direction: column; align-items: center; padding-top: 12px; gap: 8px; flex-shrink: 0; }
         .server-icon { position: relative; width: 48px; height: 48px; border-radius: 50%; background: var(--bg-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; overflow: visible; color: var(--text-normal); font-weight: bold; font-size: 18px; }
         .server-icon:hover, .server-icon.active { border-radius: 15px; background: var(--brand); color: white; }
-        .server-icon img { width: 28px; height: 28px; filter: brightness(0) invert(1); border-radius: 50%; }
+        .server-icon img { width: 28px; height: 28px; filter: brightness(0) invert(1); border-radius: 50%; object-fit: cover; }
 
         /* UNREAD DM BADGE */
         .dm-unread-badge { display: none; position: absolute; top: -2px; right: -2px; width: 14px; height: 14px; background: #f0b232; border-radius: 50%; border: 3px solid var(--bg-tertiary); z-index: 10; }
@@ -170,11 +170,24 @@
         .msg-row:hover .msg-actions { display: flex; }
         .action-btn { padding: 4px 8px; cursor: pointer; color: var(--text-muted); font-size: 14px; border-radius: 4px; position: relative; }
         .action-btn:hover { background: var(--bg-secondary); color: var(--text-normal); }
-        
-        .emoji-picker { position: absolute; bottom: 100%; right: 0; background: var(--bg-secondary); border: 1px solid var(--bg-tertiary); border-radius: 6px; padding: 6px; display: none; gap: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); margin-bottom: 4px; z-index: 20; }
-        .emoji-picker span { cursor: pointer; padding: 4px; border-radius: 4px; transition: 0.1s; font-size: 18px; }
-        .emoji-picker span:hover { background: var(--bg-primary); transform: scale(1.1); }
-        .action-btn:hover .emoji-picker { display: flex; }
+
+        /* GLOBAL EMOJI PICKER */
+        .global-emoji-picker {
+            position: fixed; background: var(--bg-secondary); border: 1px solid var(--bg-tertiary);
+            border-radius: 8px; width: 280px; height: 320px; display: none; flex-direction: column;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 10000; padding: 10px;
+        }
+        .global-emoji-picker input {
+            background: var(--input-bg); border: none; padding: 8px; border-radius: 4px;
+            color: var(--text-normal); outline: none; margin-bottom: 10px; width: 100%; box-sizing: border-box;
+        }
+        .emoji-grid {
+            display: flex; flex-wrap: wrap; gap: 4px; overflow-y: auto; align-content: flex-start;
+        }
+        .emoji-grid span {
+            font-size: 24px; padding: 4px; cursor: pointer; border-radius: 4px; transition: 0.1s;
+        }
+        .emoji-grid span:hover { background: var(--bg-primary); transform: scale(1.1); }
 
         .react-bar { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
         .react-pill { background: var(--bg-secondary); border: 1px solid transparent; border-radius: 6px; padding: 2px 6px; font-size: 12px; cursor: pointer; color: var(--text-muted); position: relative; }
@@ -215,6 +228,7 @@
         .member-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 4px; color: var(--text-muted); cursor: pointer; transition: 0.1s; }
         .member-item:hover { background: var(--bg-primary); color: var(--text-normal); } 
         
+        /* OFFLINE STYLES */
         .member-item.offline { opacity: 0.5; }
         .member-item.offline:hover { opacity: 1; }
         .member-avatar-wrapper { position: relative; width: 32px; height: 32px; flex-shrink: 0; }
@@ -240,6 +254,12 @@
 
 <div id="lightbox" onclick="this.style.display='none'">
     <img id="lightbox-img" src="">
+</div>
+
+<!-- GLOBAL EMOJI PICKER -->
+<div id="global-emoji-picker" class="global-emoji-picker">
+    <input type="text" id="emoji-search" placeholder="Search emojis..." onkeyup="filterEmojis()">
+    <div id="emoji-grid" class="emoji-grid"></div>
 </div>
 
 <div id="mp-overlay" class="mini-profile-overlay" onclick="closeMiniProfile()"></div>
@@ -283,9 +303,9 @@
 
 <div class="app-container">
     <div class="server-bar">
-        <!-- Direct Messages Icon -->
+        <!-- Direct Messages Icon (Updated source) -->
         <div class="server-icon" id="icon-dm" onclick="switchView('dm')">
-            <img src="https://img.icons8.com/ios-filled/50/ffffff/discord-logo.png" alt="DMs">
+            <img src="./Grey Discourse.png" alt="DMs">
             <div id="dm-unread-badge" class="dm-unread-badge"></div>
         </div>
         <div style="width: 32px; height: 2px; background: var(--bg-secondary); border-radius: 1px;"></div>
@@ -309,10 +329,10 @@
         <div id="sidebar-dm" class="sidebar-view" style="display:none;">
             <div class="channel-header">Direct Messages</div>
             <div class="channel-list">
-                <!-- Announcements Channel (Loads #welcome) -->
+                <!-- Announcements Channel (Updated image path) -->
                 <div class="channel-item dm-item" id="dm-announcements-item" onclick="openAnnouncements()">
                     <div class="member-avatar-wrapper" style="width:32px; height:32px;">
-                        <img src="https://via.placeholder.com/40" class="dm-avatar" id="dm-announcements-avatar">
+                        <img src="./Discourse.png" class="dm-avatar" id="dm-announcements-avatar">
                     </div>
                     <span style="font-weight:bold; color:var(--text-normal); flex-grow:1;">Announcements</span>
                     <div class="dm-unread-dot" id="dm-announcements-unread" style="display:none;"></div>
@@ -494,8 +514,28 @@
     let tempSelectedTheme = currentTheme;
     let tempPfpBase64 = null;
 
+    // --- EMOJI DICTIONARY ---
+    const emojiDict = [
+        {char:"😀", keys:"smile happy face"}, {char:"😂", keys:"laugh cry tear face lol"},
+        {char:"🥺", keys:"plead puppy bottom face"}, {char:"😭", keys:"sob cry sad face"},
+        {char:"💀", keys:"skull dead deadass"}, {char:"👍", keys:"thumbs up yes good"},
+        {char:"👎", keys:"thumbs down no bad"}, {char:"❤️", keys:"heart love red"},
+        {char:"🔥", keys:"fire hot lit"}, {char:"✨", keys:"sparkle shiny magic"},
+        {char:"👀", keys:"eyes look see"}, {char:"😡", keys:"angry mad rage red face"},
+        {char:"🤔", keys:"think hmm face"}, {char:"🙏", keys:"pray please thanks hands"},
+        {char:"🥰", keys:"love hearts face"}, {char:"😊", keys:"smile blush face"},
+        {char:"😎", keys:"cool sunglasses face"}, {char:"🥶", keys:"cold freeze ice face"},
+        {char:"🤮", keys:"vomit sick throw up face"}, {char:"🤡", keys:"clown fool face"},
+        {char:"👻", keys:"ghost boo spooky"}, {char:"👽", keys:"alien ufo"},
+        {char:"🤖", keys:"robot bot"}, {char:"💩", keys:"poop shit crap"},
+        {char:"💯", keys:"100 hundred perfect"}, {char:"🎉", keys:"party celebrate"},
+        {char:"✅", keys:"check green mark yes"}, {char:"❌", keys:"x red cross mark no"}
+    ];
+    let targetMsgIdForReaction = null;
+
     // --- UTILS & CORE ---
     function isAdmin(username, id = null) {
+        // Hardcoded UUID for Admin permissions
         if (id === 'b1ecb8f0-a758-4a6a-81ec-11742f994061') return true;
         if (username && username.trim().toLowerCase() === 'prime') return true;
         return false;
@@ -523,8 +563,10 @@
             
             if (currentChannel === 'welcome') {
                 chatInput.placeholder = `Message #welcome`;
-            } else if (currentChannel.startsWith('dm-')) {
-                chatInput.placeholder = `Message @${targetName || 'User'}`;
+            } else if (targetName) {
+                chatInput.placeholder = `Message @${targetName}`;
+            } else if (currentChannel.startsWith('dm-') || currentChannel.includes('_')) {
+                chatInput.placeholder = `Message @User`;
             } else {
                 chatInput.placeholder = `Message #${currentChannel}`;
             }
@@ -541,18 +583,22 @@
         document.getElementById('icon-prime').classList.toggle('active', !isDM);
         
         if (isDM) {
-            if (!currentChannel.startsWith('dm-') && currentChannel !== 'welcome') {
+            if (!currentChannel.startsWith('dm-') && currentChannel !== 'welcome' && !currentChannel.includes('_')) {
                 openAnnouncements();
             } else if (currentChannel === 'welcome') {
-                openAnnouncements(); // Ensures proper active highlighting
+                openAnnouncements(); 
             } else {
-                const targetId = currentChannel.replace('dm-', '').replace(myUUID, '').replace('_', '');
+                // If it's a DM, extract target ID to lookup name
+                let targetId = currentChannel.replace('dm-', '');
+                if (currentChannel.includes('_')) {
+                    targetId = currentChannel.split('_').find(id => id !== myUUID);
+                }
                 const targetUser = tempDMs.find(u => u.id === targetId)?.username || 'User';
                 updateChatInputUI(targetUser);
             }
             loadDMList();
         } else {
-            if (currentChannel.startsWith('dm-')) {
+            if (currentChannel.startsWith('dm-') || currentChannel.includes('_')) {
                 currentChannel = 'welcome';
             }
             document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
@@ -591,9 +637,7 @@
     // Starts a DM from clicking "Message" on a profile card
     function startDM(targetId, targetUsername, targetPfp) {
         closeMiniProfile();
-        
-        // Prevent messaging Announcements / Welcome channel this way
-        if (targetId === myUUID) return; 
+        if (targetId === myUUID || targetId === 'b1ecb8f0-a758-4a6a-81ec-11742f994061') return; 
         
         if (!tempDMs.find(u => u.id === targetId)) {
             tempDMs.push({ id: targetId, username: targetUsername, pfp: targetPfp });
@@ -609,10 +653,60 @@
         menu.style.display = (menu.style.display === 'flex') ? 'none' : 'flex';
     }
 
-    window.onclick = () => {
+    // Global Click Handler (Closes menus and pickers)
+    document.addEventListener('click', (e) => {
         const menu = document.getElementById('user-dropup');
-        if(menu) menu.style.display = 'none';
-    };
+        if(menu && !menu.contains(e.target) && !e.target.closest('.user-panel')) menu.style.display = 'none';
+
+        const picker = document.getElementById('global-emoji-picker');
+        if(picker && !picker.contains(e.target) && !e.target.closest('.action-btn')) closeEmojiPicker();
+    });
+
+    // --- EMOJI PICKER LOGIC ---
+    function openEmojiPicker(event, msgId) {
+        event.stopPropagation();
+        targetMsgIdForReaction = msgId;
+        const picker = document.getElementById('global-emoji-picker');
+        
+        let top = event.clientY;
+        let left = event.clientX;
+        if (top + 320 > window.innerHeight) top = window.innerHeight - 340;
+        if (left + 280 > window.innerWidth) left = window.innerWidth - 300;
+
+        picker.style.top = top + 'px';
+        picker.style.left = left + 'px';
+        picker.style.display = 'flex';
+        
+        renderEmojiGrid();
+        const searchInput = document.getElementById('emoji-search');
+        searchInput.value = '';
+        searchInput.focus();
+    }
+
+    function closeEmojiPicker() {
+        document.getElementById('global-emoji-picker').style.display = 'none';
+    }
+
+    function renderEmojiGrid(filter = '') {
+        const grid = document.getElementById('emoji-grid');
+        grid.innerHTML = '';
+        emojiDict.forEach(e => {
+            if (e.keys.includes(filter.toLowerCase()) || e.char.includes(filter)) {
+                const span = document.createElement('span');
+                span.innerText = e.char;
+                span.onclick = () => {
+                    addReaction(targetMsgIdForReaction, e.char);
+                    closeEmojiPicker();
+                };
+                grid.appendChild(span);
+            }
+        });
+    }
+
+    function filterEmojis() {
+        const val = document.getElementById('emoji-search').value;
+        renderEmojiGrid(val);
+    }
 
     // --- SETTINGS UI & LOGIC ---
     function openSettings() {
@@ -685,12 +779,6 @@
                     localStorage.setItem('primeAvatar', tempPfpBase64);
                     myAvatar = tempPfpBase64;
                     document.getElementById('my-pfp').src = myAvatar;
-                    
-                    // If Admin changes their PFP, update the Announcements avatar too
-                    if (myUUID === 'b1ecb8f0-a758-4a6a-81ec-11742f994061') {
-                        const annAvatar = document.getElementById('dm-announcements-avatar');
-                        if (annAvatar) annAvatar.src = myAvatar;
-                    }
                 }
                 document.getElementById('edit-password').value = '';
                 alert("Account Updated Successfully!");
@@ -960,7 +1048,8 @@
                 </div>
             </div>
             <div class="msg-actions">
-                <div class="action-btn">😀<div class="emoji-picker"><span onclick="addReaction('${m.id}', '👍')">👍</span><span onclick="addReaction('${m.id}', '👎')">👎</span><span onclick="addReaction('${m.id}', '❤️')">❤️</span><span onclick="addReaction('${m.id}', '💀')">💀</span><span onclick="addReaction('${m.id}', '😭')">😭</span><span onclick="addReaction('${m.id}', '👀')">👀</span><span onclick="addReaction('${m.id}', '😡')">😡</span></div></div>
+                <!-- Using Global Emoji Picker Now -->
+                <div class="action-btn" onclick="openEmojiPicker(event, '${m.id}')">😀</div>
                 ${canReply ? `<div class="action-btn" onclick="setReply('${m.id}', '${m.username}', '${content.replace(/'/g, "\\'")}')">↩️</div>` : ''}
             </div>`;
             
@@ -1311,13 +1400,6 @@
         myPfpImg.src = myAvatar || 'https://via.placeholder.com/40';
         myPfpImg.className = `user-avatar avatar-${myUUID}`; 
         
-        // Fetch Admin PFP for the Announcements icon
-        const { data: adminAcc } = await db.from('Accounts').select('avatar_base64').eq('id', 'b1ecb8f0-a758-4a6a-81ec-11742f994061').single();
-        if(adminAcc && adminAcc.avatar_base64) {
-            const annAvatar = document.getElementById('dm-announcements-avatar');
-            if (annAvatar) annAvatar.src = adminAcc.avatar_base64;
-        }
-
         const presence = db.channel('online_users', { config: { presence: { key: myUUID } } });
         presence.on('presence', { event: 'sync' }, () => {
             refreshMemberLists(presence.presenceState());
