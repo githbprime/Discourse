@@ -266,7 +266,7 @@
                 <img src="https://img.icons8.com/ios-filled/50/ffffff/settings.png" class="dropup-icon">
                 <span>Settings</span>
             </div>
-            <div class="dropup-item" onclick="showMiniProfile(event, myUsername, true)">
+            <div class="dropup-item" onclick="openMyProfile(event)">
                 <img src="https://img.icons8.com/ios-glyphs/30/ffffff/user-male-circle.png" class="dropup-icon">
                 <span>Edit Profile</span>
             </div>
@@ -363,41 +363,41 @@
     }
 
     async function refreshMemberLists(presenceState) {
-        // 1. Fetch latest data from Accounts
         const { data: allAccounts } = await db.from('Accounts').select('*');
         if (!allAccounts) return;
 
         const onlineUUIDs = Object.keys(presenceState);
         const onlineList = document.getElementById('member-list-online');
         const offlineList = document.getElementById('member-list-offline');
-    
+        
         onlineList.innerHTML = '';
         offlineList.innerHTML = '';
-    
+        
         allAccounts.forEach(account => {
             const isOnline = onlineUUIDs.includes(account.id);
-            const isAdm = isAdmin(account.username);
-            const isNitro = account.is_nitro;
+            const isAdm = (account.username === 'Prime'); // STRICT ADMIN CHECK
+            const isNitro = account.is_nitro || false;
 
-            // FIX: Ensure livePfps is populated so chat messages show images
-            livePfps[account.username] = account.avatar_url;
+            // Failsafe for broken avatars
+            const safeAvatar = account.avatar_url || 'https://via.placeholder.com/40';
+            livePfps[account.username] = safeAvatar;
 
-            // PRIORITY COLORING LOGIC
-            let nameColor = '#dbdee1'; // Default gray
+            let nameColor = '#dbdee1';
             let extraTags = '';
 
+            // PRIORITY CHECK: Admin completely overrides Nitro
             if (isAdm) {
-                nameColor = '#ffcc00'; // Admin Yellow
+                nameColor = '#ffcc00';
                 extraTags = ' 👑';
             } else if (isNitro) {
-                nameColor = '#00a8fc'; // Nitro Blue
+                nameColor = '#00a8fc';
                 extraTags = '<span class="nitro-tag">Nitro</span>';
             }
 
             const memberHTML = `
                 <div class="member-item ${isOnline ? '' : 'offline'}" onclick="showMiniProfile(event, '${account.username}')">
                     <div class="member-avatar-wrapper">
-                        <img src="${account.avatar_url}" class="msg-pfp avatar-${account.id}">
+                        <img src="${safeAvatar}" class="msg-pfp avatar-${account.id}" onerror="this.src='https://via.placeholder.com/40'">
                         ${isOnline ? '<div class="status-dot"></div>' : ''}
                     </div>
                     <span style="color:${nameColor}">${account.username}${extraTags}</span>
@@ -408,29 +408,40 @@
         });
 
         document.getElementById('online-count').innerText = onlineUUIDs.length;
+        // If you want offline count:
+        // document.getElementById('offline-count').innerText = allAccounts.length - onlineUUIDs.length;
     }
 
     // --- UI & UTILS ---
     function openLightbox(src) { document.getElementById('lightbox-img').src = src; document.getElementById('lightbox').style.display = 'flex'; }
     function closeMiniProfile() { document.getElementById('mp-overlay').style.display = 'none'; document.getElementById('mp-card').style.display = 'none'; }
+// Prevents the DOM element collision bug
+    function openMyProfile(event) {
+        event.stopPropagation();
+        document.getElementById('user-dropup').style.display = 'none'; // Close the menu
+        showMiniProfile(event, myUsername, true); // Safely pass the JS string
+    }
+
     function showMiniProfile(event, username, isSelf = false) {
         const card = document.getElementById('mp-card');
         const overlay = document.getElementById('mp-overlay');
-        const isAdm = isAdmin(username);
         
-        document.getElementById('mp-pfp').src = getPfp(username);
-        // Removed the .split('#') logic since tags are gone
+        // Strict Admin Check
+        const isAdm = (username === 'Prime'); 
+        
+        // Grab the avatar from livePfps, or fallback to the local one, or a placeholder
+        const safePfp = livePfps[username] || myAvatar || 'https://via.placeholder.com/40';
+
+        document.getElementById('mp-pfp').src = safePfp;
         document.getElementById('mp-name').innerHTML = `<span style="color:${isAdm?'#ffcc00':'white'}">${username}${isAdm?' 👑':''}</span>`;
-        // Removed the #0000, replaced with Member/Admin
         document.getElementById('mp-hash').innerText = isAdm ? 'ADMIN' : 'MEMBER';
 
-        // Handle the new Logout logic
         const logoutBtn = document.getElementById('mp-logout-btn');
         if (isSelf) {
             logoutBtn.style.display = 'block';
             logoutBtn.onclick = () => {
-                localStorage.clear(); // Wipes the session completely
-                location.reload();    // Reloads to show the login screen
+                localStorage.clear();
+                location.reload();
             };
         } else {
             logoutBtn.style.display = 'none';
@@ -754,16 +765,29 @@ async function initApp() {
 
         const isNitro = account?.is_nitro || false;
         
-        // 3. Update Sidebar UI
-        // We use the yellow crown for Nitro/Admin users as per your plan
-        document.getElementById('my-name').innerHTML = `
-            <span style="color:${isNitro ? '#ffcc00' : 'white'}">
-                ${myUsername}${isNitro ? ' 👑' : ''}
-            </span>
-        `;
-        // Since we are moving away from #tags, we'll label it "Member" or "Nitro"
-        document.getElementById('my-hash').innerText = isNitro ? 'NITRO' : 'MEMBER';
-        document.getElementById('my-hash').style.color = isNitro ? '#00a8fc' : '#b5bac1';
+         // 3. Update Sidebar UI
+        const isAdm = (myUsername === 'Prime'); // Strict check
+        let nameColor = '#dbdee1';
+        let extraTags = '';
+        let hashContent = 'MEMBER';
+
+        if (isAdm) {
+            nameColor = '#ffcc00';
+            extraTags = ' 👑';
+            hashContent = 'ADMIN';
+            document.getElementById('my-hash').style.color = '#ffcc00';
+        } else if (isNitro) {
+            nameColor = '#00a8fc';
+            extraTags = '<span class="nitro-tag">Nitro</span>';
+            hashContent = '<span class="nitro-tag" style="margin-left:0;">Nitro</span>';
+        }
+
+        document.getElementById('my-name').innerHTML = `<span style="color:${nameColor}">${myUsername}${extraTags}</span>`;
+        document.getElementById('my-hash').innerHTML = hashContent;
+        
+        const myPfpImg = document.getElementById('my-pfp');
+        myPfpImg.src = myAvatar;
+        myPfpImg.className = `msg-pfp avatar-${myUUID}`;
         
         const myPfpImg = document.getElementById('my-pfp');
         myPfpImg.src = myAvatar;
