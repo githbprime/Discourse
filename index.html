@@ -1260,6 +1260,9 @@
                     m.pfp = idToPfp[m.sender_id] || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${m.username}`;
                     m.isNitro = idToNitro[m.sender_id] || false;
                     renderMessage(m, true);
+                    requestAnimationFrame(() => {
+                        scrollToBottom();
+                    });
                 });
                 container.scrollTop = container.scrollHeight;
             } else {
@@ -1418,6 +1421,17 @@
             const expiresAt = new Date(payload.new.expires_at).getTime();
             if (expiresAt > Date.now()) applyTimeoutUI(expiresAt);
         }).subscribe();
+
+        function scrollToBottom() {
+            const container = document.getElementById('message-container');
+            if (container) {
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+        
+        requestAnimationFrame(() => {
+            scrollToBottom();
+        });
 
         updateChatInputUI();
         loadMessages();
