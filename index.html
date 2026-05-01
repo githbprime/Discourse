@@ -1010,7 +1010,8 @@
             if (content.startsWith('{"_reply"')) {
                 try {
                     const p = JSON.parse(content); content = p.content;
-                    replyHtml = `<div class="reply-line"><img class="rt-pfp ${getUserClass(p._reply.name)}" src="${p._reply.pfp}"><strong>${p._reply.name}</strong>: ${p._reply.text}</div>`;
+                    const currentReplyPfp = livePfps[p._reply.name] || p._reply.pfp || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${p._reply.name}`;
+                    replyHtml = `<div class="reply-line"><img class="rt-pfp ${getUserClass(p._reply.name)}" src="${currentReplyPfp}"><strong>${p._reply.name}</strong>: ${p._reply.text}</div>`;
                 } catch(e){}
             }
             
@@ -1249,6 +1250,7 @@
                     idToName[acc.id] = acc.username;
                     idToPfp[acc.id] = acc.avatar_base64;
                     idToNitro[acc.id] = acc.is_nitro;
+                    if (acc.avatar_base64) livePfps[acc.username] = acc.avatar_base64;
                 });
             }
 
