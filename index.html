@@ -514,6 +514,15 @@
     let tempSelectedTheme = currentTheme;
     let tempPfpBase64 = null;
 
+    function scrollToBottom() {
+        const container = document.getElementById('message-container');
+        if (container) {
+            setTimeout(() => {
+                container.scrollTop = container.scrollHeight;
+            }, 50); // A 50ms delay is the "sweet spot" for rendering images
+        }
+    }
+
     // --- EMOJI DICTIONARY ---
     const emojiDict = [
         {char:"😀", keys:"smile happy face"}, {char:"😂", keys:"laugh cry tear face lol"},
@@ -1260,7 +1269,6 @@
                     m.pfp = idToPfp[m.sender_id] || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${m.username}`;
                     m.isNitro = idToNitro[m.sender_id] || false;
                     renderMessage(m, true);
-                    setTimeout(scrollToBottom, 0);
                 });
                 container.scrollTop = container.scrollHeight;
             } else {
@@ -1419,13 +1427,6 @@
             const expiresAt = new Date(payload.new.expires_at).getTime();
             if (expiresAt > Date.now()) applyTimeoutUI(expiresAt);
         }).subscribe();
-
-        function scrollToBottom() {
-            const container = document.getElementById('message-container');
-            if (container) {
-                container.scrollTop = container.scrollHeight;
-            }
-        }
         
         requestAnimationFrame(() => {
             scrollToBottom();
