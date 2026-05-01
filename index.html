@@ -1260,9 +1260,7 @@
                     m.pfp = idToPfp[m.sender_id] || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${m.username}`;
                     m.isNitro = idToNitro[m.sender_id] || false;
                     renderMessage(m, true);
-                    requestAnimationFrame(() => {
-                        scrollToBottom();
-                    });
+                    setTimeout(scrollToBottom, 0);
                 });
                 container.scrollTop = container.scrollHeight;
             } else {
