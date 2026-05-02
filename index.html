@@ -914,9 +914,13 @@
         } else {
             logoutBtn.style.display = 'none';
             msgBtn.style.display = 'block';
-    
-            if (userId === localStorage.getItem('primeUUID')) {
-                //No button if it's themselves
+
+            const self = userId === myUUID;
+            
+            if (self) {
+                msgBtn.style.opacity = '0.4';
+                msgBtn.style.pointerEvents = 'auto';
+                msgBtn.innerText = "Cannot DM Yourself";
             } else {
                 msgBtn.style.opacity = '1';
                 msgBtn.style.pointerEvents = 'auto';
