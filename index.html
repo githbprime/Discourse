@@ -914,12 +914,9 @@
         } else {
             logoutBtn.style.display = 'none';
             msgBtn.style.display = 'block';
-            
-            // Dim and disable message button if they are viewing the Announcements profile
-            if (userId === 'b1ecb8f0-a758-4a6a-81ec-11742f994061') {
-                msgBtn.style.opacity = '0.4';
-                msgBtn.style.pointerEvents = 'none';
-                msgBtn.innerText = "Cannot DM Announcements";
+    
+            if (userId === myUUID) {
+                //No button if it's themselves
             } else {
                 msgBtn.style.opacity = '1';
                 msgBtn.style.pointerEvents = 'auto';
