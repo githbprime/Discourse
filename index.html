@@ -915,7 +915,7 @@
             logoutBtn.style.display = 'none';
             msgBtn.style.display = 'block';
     
-            if (userId === myUUID) {
+            if (userId === localStorage.getItem('primeUUID')) {
                 //No button if it's themselves
             } else {
                 msgBtn.style.opacity = '1';
