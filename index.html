@@ -841,6 +841,12 @@
     function logOut() { localStorage.clear(); window.location.reload(); }
     function deleteAccountAlert() { alert("This feature is under construction. For assistance, please contact #support"); }
 
+    function escapeHTML(str) {
+        const p = document.createElement('p');
+        p.textContent = str;
+        return p.innerHTML;
+    }
+
     // --- TIMEOUTS ---
     function applyTimeoutUI(expiresAt) {
         const input = document.getElementById('chat-input'), box = document.getElementById('input-box-wrapper');
@@ -974,6 +980,12 @@
         };
         reader.readAsDataURL(file);
     }
+    function esc(str) {
+        if (!str) return "";
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
 
     function handleFileAsBase64(input) {
         const file = input.files[0]; if (!file) return;
@@ -996,79 +1008,88 @@
         reader.readAsDataURL(file);
     }
 
-    // --- CHAT RENDERING AND LOADING ---
     function renderMessage(m, appendOnly = false) {
         try {
             const container = document.getElementById('message-container');
             const isFirst = (m.username !== lastUser || (new Date(m.created_at) - lastTime) > 300000);
-            
+        
             const isAdm = isAdmin(m.username, m.sender_id);
             const isNitro = m.isNitro || false;
             const uClass = getUserClass(m.username);
             const isAdmSelf = myUUID === 'b1ecb8f0-a758-4a6a-81ec-11742f994061';
-            
-            // Non-admins cannot reply in the #welcome channel
+        
             const canReply = !(currentChannel === 'welcome' && !isAdmSelf);
-            
+        
             let nameColor = isAdm ? '#ffcc00' : (isNitro ? '#00a8fc' : 'var(--text-normal)');
             let tags = (isAdm ? ' 👑' : '') + (isNitro ? ' <span class="nitro-tag">Nitro</span>' : '');
 
-            let content = m.content || "";
+            let rawContent = m.content || "";
+            let displayContent = ""; 
             let replyHtml = '';
-            
-            if (content.startsWith('{"_reply"')) {
+        
+            // 1. Handle Replies Safely
+            if (rawContent.startsWith('{"_reply"')) {
                 try {
-                    const p = JSON.parse(content); content = p.content;
+                    const p = JSON.parse(rawContent); 
+                    displayContent = esc(p.content); // ESCAPE THE MESSAGE
                     const currentReplyPfp = livePfps[p._reply.name] || p._reply.pfp || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${p._reply.name}`;
-                    replyHtml = `<div class="reply-line"><img class="rt-pfp ${getUserClass(p._reply.name)}" src="${currentReplyPfp}"><strong>${p._reply.name}</strong>: ${p._reply.text}</div>`;
-                } catch(e){}
+                
+                    // ESCAPE THE NAME AND TEXT IN THE REPLY
+                    replyHtml = `<div class="reply-line">
+                        <img class="rt-pfp ${getUserClass(p._reply.name)}" src="${currentReplyPfp}">
+                        <strong>${esc(p._reply.name)}</strong>: ${esc(p._reply.text)}
+                    </div>`;
+                } catch(e){ displayContent = esc(rawContent); }
+            } else {
+                displayContent = esc(rawContent); // ESCAPE NORMAL MESSAGES
             }
-            
+        
+            // 2. Handle Images Safely (Splitting AFTER escaping is safer)
             let imgSrc = null;
-            if (content.includes('[IMG]')) { 
-                const parts = content.split('[IMG]'); 
-                content = parts[0]; 
-                imgSrc = parts[1]; 
+              if (displayContent.includes('[IMG]')) { 
+                const parts = displayContent.split('[IMG]'); 
+                displayContent = parts[0]; 
+                imgSrc = parts[1]; // Note: Ideally you'd validate this is a real URL
             }
-            
+        
             const row = document.createElement('div');
             row.className = `msg-row ${isFirst || replyHtml ? 'first' : ''}`;
-            
+        
             let reactHtml = '<div class="react-bar">';
             if (m.reactions && typeof m.reactions === 'object' && Object.keys(m.reactions).length > 0) {
                 for (let [emoji, users] of Object.entries(m.reactions)) {
                     if (Array.isArray(users)) {
-                        let tooltips = users.map(u => `<div class="rt-user"><img class="rt-pfp ${getUserClass(u)}" src="${getPfp(u)}"> ${u}</div>`).join('');
+                        // ESCAPE USERNAMES IN TOOLTIPS
+                        let tooltips = users.map(u => `<div class="rt-user"><img class="rt-pfp ${getUserClass(u)}" src="${getPfp(u)}"> ${esc(u)}</div>`).join('');
                         reactHtml += `<div class="react-pill ${users.includes(myUsername)?'active':''}" onclick="addReaction('${m.id}', '${emoji}')">${emoji} ${users.length}<div class="react-tooltip">${tooltips}</div></div>`;
                     }
                 }
             }
             reactHtml += '</div>';
-            
+        
             row.innerHTML = `${replyHtml}
             <div class="msg-flex">
                 <div class="avatar-col">
-                    ${(isFirst || replyHtml) ? `<img src="${m.pfp}" class="msg-pfp ${uClass}" onclick="showMiniProfile(event, '${m.username}', ${m.sender_id === myUUID}, ${isAdm}, ${isNitro}, '${m.sender_id}')">` : ''}
+                    ${(isFirst || replyHtml) ? `<img src="${m.pfp}" class="msg-pfp ${uClass}" onclick="showMiniProfile(event, '${esc(m.username)}', ${m.sender_id === myUUID}, ${isAdm}, ${isNitro}, '${m.sender_id}')">` : ''}
                 </div>
                 <div class="content-col">
-                    ${(isFirst || replyHtml) ? `<div class="msg-header"><span class="username" style="color:${nameColor}" onclick="showMiniProfile(event, '${m.username}', ${m.sender_id === myUUID}, ${isAdm}, ${isNitro}, '${m.sender_id}')">${m.username}${tags}</span><span class="timestamp">${new Date(m.created_at).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>` : ''}
-                    <div class="msg-text">${content}</div>
+                    ${(isFirst || replyHtml) ? `<div class="msg-header"><span class="username" style="color:${nameColor}" onclick="showMiniProfile(event, '${esc(m.username)}', ${m.sender_id === myUUID}, ${isAdm}, ${isNitro}, '${m.sender_id}')">${esc(m.username)}${tags}</span><span class="timestamp">${new Date(m.created_at).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>` : ''}
+                    <div class="msg-text">${displayContent}</div>
                     ${imgSrc ? `<img src="${imgSrc}" class="chat-img" onclick="openLightbox(this.src)">` : ''}
                     ${reactHtml === '<div class="react-bar"></div>' ? '' : reactHtml}
                 </div>
-            </div>
+                </div>
             <div class="msg-actions">
-                <!-- Using Global Emoji Picker Now -->
                 <div class="action-btn" onclick="openEmojiPicker(event, '${m.id}')">😀</div>
-                ${canReply ? `<div class="action-btn" onclick="setReply('${m.id}', '${m.username}', '${content.replace(/'/g, "\\'")}')">↩️</div>` : ''}
+                ${canReply ? `<div class="action-btn" onclick="setReply('${m.id}', '${esc(m.username)}', '${displayContent.replace(/'/g, "\\'")}')">↩️</div>` : ''}
             </div>`;
-            
+        
             container.appendChild(row);
             if (appendOnly) container.scrollTop = container.scrollHeight;
-            
+        
             lastUser = m.username; 
             lastTime = new Date(m.created_at);
-            
+        
         } catch (err) {
             console.error("renderMessage crashed while drawing:", m, err);
         }
