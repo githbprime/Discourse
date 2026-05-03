@@ -1096,27 +1096,36 @@
     }
 
     async function sendMessage(val) {
-        const { data: timeoutData } = await db.from('Timeouts').select('expires_at').eq('target_id', myUUID).order('expires_at', { ascending: false }).limit(1);
+        // 1. Get the actual authenticated user from Supabase
+        const { data: { user }, error: authError } = await db.auth.getUser();
 
-        if (timeoutData && timeoutData.length > 0) {
-            const expiresAt = new Date(timeoutData[0].expires_at).getTime();
-            if (expiresAt > Date.now()) {
-                applyTimeoutUI(expiresAt);
-                console.warn("Message blocked: You are currently timed out.");
+        if (authError || !user) {
+        alert("Security Error: You are not properly logged in to Supabase Auth.");
                 return;
-            }
         }
 
+        // Use the ID Supabase knows, not just a local variable
+        const currentUID = user.id; 
+
+        // ... your existing timeout check logic ...
+        const { data: timeoutData } = await db.from('Timeouts')
+            .select('expires_at')
+            .eq('target_id', currentUID) // Use the real UID here too
+            .order('expires_at', { ascending: false })
+            .limit(1);
+
+        // ... your existing attachment/reply logic ...
         let finalVal = val;
         if (pendingAttachment) finalVal += "[IMG]" + pendingAttachment;
         if (pendingReply) finalVal = JSON.stringify({ _reply: pendingReply, content: finalVal });
-        
+    
+        // 2. Insert using the ID that matches your Auth Session
         const { error } = await db.from('Messages').insert([{ 
-            sender_id: myUUID, 
+            sender_id: currentUID, // THIS must match auth.uid()
             content: finalVal, 
             channel: currentChannel 
         }]);
-        
+    
         if(error) alert("Error sending message: " + error.message);
         else {
             cancelReply(); 
