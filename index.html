@@ -545,7 +545,7 @@
     // --- UTILS & CORE ---
     function isAdmin(username, id = null) {
         // Hardcoded UUID for Admin permissions
-        if (id === 'b1ecb8f0-a758-4a6a-81ec-11742f994061') return true;
+        if (id === 'a2ecb8f0-a420-47ef-81ec-11942f994076') return true;
         if (username && username.trim().toLowerCase() === 'prime') return true;
         return false;
     }
@@ -558,7 +558,7 @@
     function updateChatInputUI(targetName = '') {
         const inputBox = document.getElementById('input-box-wrapper');
         const chatInput = document.getElementById('chat-input');
-        const isAdmSelf = myUUID === 'b1ecb8f0-a758-4a6a-81ec-11742f994061';
+        const isAdmSelf = myUUID === 'a2ecb8f0-a420-47ef-81ec-11942f994076';
         
         if (currentChannel === 'welcome' && !isAdmSelf) {
             inputBox.style.opacity = '0.3';
@@ -646,7 +646,7 @@
     // Starts a DM from clicking "Message" on a profile card
     function startDM(targetId, targetUsername, targetPfp) {
         closeMiniProfile();
-        if (targetId === myUUID || targetId === 'b1ecb8f0-a758-4a6a-81ec-11742f994061') return; 
+        if (targetId === myUUID || targetId === 'a2ecb8f0-a420-47ef-81ec-11942f994076') return; 
         
         if (!tempDMs.find(u => u.id === targetId)) {
             tempDMs.push({ id: targetId, username: targetUsername, pfp: targetPfp });
@@ -1016,7 +1016,7 @@
             const isAdm = isAdmin(m.username, m.sender_id);
             const isNitro = m.isNitro || false;
             const uClass = getUserClass(m.username);
-            const isAdmSelf = myUUID === 'b1ecb8f0-a758-4a6a-81ec-11742f994061';
+            const isAdmSelf = myUUID === 'a2ecb8f0-a420-47ef-81ec-11942f994076';
         
             const canReply = !(currentChannel === 'welcome' && !isAdmSelf);
         
