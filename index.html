@@ -1021,18 +1021,18 @@
     const GROQ_API_KEY = "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";
     const LLAMA_BOT_UUID = "5b375d3c76471b671cb78fc4ab97dcfad161ef5e0132af35c867a9abcaa47c65";
 
-    async function triggerLlamaBot(channel, messageContent, senderId) {
-        // 1. Only respond in #general
-        if (channel !== 'general') return;
-
-        // 2. Prevent the bot from talking to itself (infinite loops)
-        if (senderId === LLAMA_BOT_UUID) return;
-
-        // 3. Only trigger if the message STARTS with @llama (case-insensitive)
-        if (!messageContent.toLowerCase().startsWith('@llama')) return;
-
+async function triggerLlamaBot(channel, messageContent, senderId) {
         try {
-            // 4. Fetch the last 10 messages in #general (the trigger message + 9 behind it)
+            // 1. Only respond in #general
+            if (channel !== 'general') return;
+
+            // 2. Prevent the bot from talking to itself
+            if (senderId === LLAMA_BOT_UUID) return;
+
+            // 3. Safety check + Trigger check
+            if (!messageContent || !messageContent.toLowerCase().startsWith('@llama')) return;
+
+            // 4. Fetch the last 10 messages
             const { data: messages, error } = await db
                 .from('Messages')
                 .select('*')
@@ -1042,10 +1042,9 @@
 
             if (error) throw error;
 
-            // The database returns newest first. We need to reverse it so the AI reads chronologically.
             messages.reverse();
 
-            // 5. Build the context for Groq
+            // 5. Build context
             const apiMessages = [
                 {
                     role: "system",
@@ -1053,18 +1052,15 @@
                 }
             ];
 
-            // Add the chat history to the AI's memory
             messages.forEach(m => {
                 const isBot = m.sender_id === LLAMA_BOT_UUID;
                 apiMessages.push({
                     role: isBot ? "assistant" : "user",
-                    // Passing the content. If you have usernames joined in this query, 
-                    // you could format it as `${m.username}: ${m.content}` to make the AI smarter!
                     content: m.content 
                 });
             });
 
-            // 6. Call the Groq API (Instant generation, no streaming)
+            // 6. Call Groq
             const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -1078,14 +1074,19 @@
                 })
             });
 
+            // Catch API-specific errors (like bad model name or rate limit)
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error?.message || `HTTP ${response.status} Error`);
+            }
+
             const data = await response.json();
 
-            // 7. Post the bot's reply back to Supabase
+            // 7. Post the successful reply
             if (data.choices && data.choices.length > 0) {
                 const botReply = data.choices[0].message.content;
 
                 await db.from('Messages').insert([{
-                    id: crypto.randomUUID(), // Generates a new unique ID for the message
                     sender_id: LLAMA_BOT_UUID,
                     channel: 'general',
                     content: botReply
@@ -1094,9 +1095,16 @@
 
         } catch (err) {
             console.error("LLaMa Bot encountered an error:", err);
+            
+            // 8. Post the ERROR as a chat message
+            await db.from('Messages').insert([{
+                sender_id: LLAMA_BOT_UUID,
+                channel: 'general',
+                content: `*System Error: ${err.message}*`
+            }]);
         }
     }
-
+    
     function renderMessage(m, appendOnly = false) {
         try {
             const container = document.getElementById('message-container');
@@ -1185,7 +1193,7 @@
         }
     }
 
-async function sendMessage(val) {
+    async function sendMessage(val) {
         // 1. Check for timeouts using your local UUID
         const { data: timeoutData } = await db.from('Timeouts')
             .select('expires_at')
@@ -1214,14 +1222,16 @@ async function sendMessage(val) {
             channel: currentChannel 
         }]);
         
-        if(error) alert("Error sending message: " + error.message);
-        else {
-            triggerLlamaBot(currentChannel, content, myUUID);
+        if(error) {
+            alert("Error sending message: " + error.message);
+        } else {
+            // FIXED: Passed 'val' instead of 'content'
+            triggerLlamaBot(currentChannel, val, myUUID);
             cancelReply(); 
             cancelAttachment();
         }
     }
-
+    
     document.querySelectorAll('#sidebar-prime .channel-item').forEach(el => {
         el.onclick = () => {
             document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
