@@ -215,6 +215,15 @@
         .username { color: var(--text-normal); font-weight: 500; font-size: 16px; cursor: pointer; }
         .timestamp { color: var(--text-muted); font-size: 12px; }
         .msg-text { color: var(--text-normal); font-size: 15px; line-height: 1.4; word-break: break-word; }
+        .msg-text {
+            color: var(--text-normal);
+            font-size: 15px;
+            white-space: pre-wrap !important;
+            line-height: 1.4;
+            word-wrap: break-word;
+            display: block;
+            width: 100%;
+        }
         .chat-img { max-width: 100%; max-height: 350px; border-radius: 8px; margin: 6px 0; display: block; background: var(--bg-secondary); cursor: zoom-in; }
 
         /* INPUT AREA */
@@ -1053,7 +1062,7 @@ async function triggerLlamaBot(channel, messageContent, senderId) {
 
         const apiMessages = [{
             role: "system",
-            content:  "You are LLaMa 4 17B 16E Instruct, and being ran through Discourse as a Discourse BOT. The owner of Discourse is githbprime. Keep responses short, but not so short you're cutting back on grammar and dropping meaning in sentences, just try not to overwrite. Your responses should never exceed 5 sentences aka 1 paragraph unless specifically told, even then don't exceed 2 paragraphs. Use no formatting except for new lines for clarity. "
+            content:  "You are LLaMa 4 17B 16E Instruct, and being ran through Discourse as a Discourse BOT. The owner of Discourse is githbprime. Use Double New Lines to create new lines so the app renders them correctly (\n). Your responses should never exceed 5 sentences aka 1 paragraph unless specifically told, even then don't exceed 2 paragraphs. Use no formatting except for new lines for clarity. "
         }];
 
         messages.forEach(m => {
