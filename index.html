@@ -1070,18 +1070,35 @@ async function triggerLlamaBot(channel, messageContent, senderId) {
         }];
 
         messages.forEach(m => {
-            let mText = m.content;
-            try { if(mText.startsWith('{')) mText = JSON.parse(mText).content; } catch(e){}
-            
-            // Get the username from the join, fallback to 'User' if not found
-            const authorName = m.Accounts?.username || "User";
-            const isBot = m.sender_id === LLAMA_BOT_UUID;
+          let mText = m.content;
+          try {
+            if(mText.startsWith('{')) mText = JSON.parse(mText).content;
+          } catch(e){}
 
-            apiMessages.push({
-                role: isBot ? "assistant" : "user",
-                // We put the name INSIDE the content so the AI stays oriented
-                content: isBot ? mText : `${authorName}: ${mText}`
-            });
+          const authorName = m.Accounts?.username || "User";
+          const isBot = m.sender_id === LLAMA_BOT_UUID;
+
+          if (isBot) {
+            apiMessages.push({ role: "assistant", content: mText });
+          } else {
+            // Check if the message contains your [IMG] tag
+            if (mText.includes("[IMG]data:image/")) {
+              const parts = mText.split("[IMG]");
+              const textBefore = parts[0].trim();
+              const base64Data = parts[1].split(" ")[0]; // Get string until first space
+
+              apiMessages.push({
+                role: "user",
+                content: [
+                  { type: "text", text: `${authorName}: ${textBefore || "Look at this image"}` },
+                  { type: "image_url", image_url: { url: base64Data } }
+                ]
+              });
+            } else {
+              // Standard text message
+              apiMessages.push({ role: "user", content: `${authorName}: ${mText}` });
+            }
+          }
         });
 
         // 5. Groq API Call with CORRECT model name
