@@ -1053,7 +1053,7 @@ async function triggerLlamaBot(channel, messageContent, senderId) {
 
         const apiMessages = [{
             role: "system",
-            content: "Keep responses heavily short, as you are a bot for a Discord-type application. Your responses should never exceed 5 sentences aka 1 paragraph. Use no formatting except for new lines for clarity"
+            content:  "You are LLaMa 4 17B 16E Instruct, and being ran through Discourse as a Discourse BOT. The owner of Discourse is githbprime. Keep responses short, but not so short you're cutting back on grammar and dropping meaning in sentences, just try not to overwrite. Your responses should never exceed 5 sentences aka 1 paragraph unless specifically told, even then don't exceed 2 paragraphs. Use no formatting except for new lines for clarity. "
         }];
 
         messages.forEach(m => {
