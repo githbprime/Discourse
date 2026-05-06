@@ -1040,9 +1040,6 @@ async function triggerLlamaBot(channel, messageContent, senderId) {
     // 4. Trigger check (Case Insensitive)
     if (!cleanText.toLowerCase().trim().startsWith('@llama')) return;
 
-    // --- DEBUG ALERT ---
-    alert("Bot Triggered! Reaching out to Groq...");
-
     try {
         const { data: messages, error } = await db
             .from('Messages')
@@ -1076,7 +1073,7 @@ async function triggerLlamaBot(channel, messageContent, senderId) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: "llama-3.1-8b-instant", // Updated to a real model
+                model: "meta-llama/llama-4-scout-17b-16e-instruct",
                 messages: apiMessages,
                 stream: false
             })
