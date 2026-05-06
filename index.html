@@ -1019,7 +1019,7 @@
     }
 
     const GROQ_API_KEY = "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";
-    const LLAMA_BOT_UUID = "5b375d3c76471b671cb78fc4ab97dcfad161ef5e0132af35c867a9abcaa47c65";
+    const LLAMA_BOT_UUID = "592dedf2-1068-44a1-90cd-2d59d332f2a7";
 
 async function triggerLlamaBot(channel, messageContent, senderId) {
     // 1. Only respond in #general
@@ -1119,7 +1119,7 @@ async function triggerLlamaBot(channel, messageContent, senderId) {
         
             const isAdm = isAdmin(m.username, m.sender_id);
             const isNitro = m.isNitro || false;
-            const isBot = m.sender_id === '5b375d3c76471b671cb78fc4ab97dcfad161ef5e0132af35c867a9abcaa47c65';
+            const isBot = m.sender_id === '592dedf2-1068-44a1-90cd-2d59d332f2a7';
             const uClass = getUserClass(m.username);
             const isAdmSelf = myUUID === 'a2ecb8f0-a420-47ef-81ec-11942f994076';
         
